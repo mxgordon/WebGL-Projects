@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>My Vector Graphics Editor</title>
+
+    <script id="vshader" type="x-shader/x-vertex">
+        attribute vec4 vPosition;
+        attribute vec4 vColor;
+        varying vec4 fColor;
+
+        void main() {
+            gl_Position = vPosition;
+            fColor = vColor;			// Pass point color to fragment shader
+        }
+    </script>
+
+    <script id="fshader" type="x-shader/x-fragment">
+        precision mediump float;
+        varying vec4 fColor;
+
+        void main()
+        {
+            gl_FragColor = fColor;
+        }
+    </script>
+
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/initShaders.js"></script>
+    <script src="lib/MV.js"></script>
+    <script src="lib/cs4731pjt1.js"></script>
+
+    <script src="main.js"></script>
+
+</head>
+
+<body onload="main()">
+
+<div style="text-align: center">
+    <h1 id='htitle'>My Vector Graphics Editor</h1>
+
+    <canvas id="webgl" width="400" height="400" style="border: 1px solid black;">
+        Please use a browser that supports the "canvas" tag.
+    </canvas>
+
+    <form id="fileupload" enctype="multipart/form-data">
+        <input type="file" id="files" name="files[]" accept=".svg" />
+    </form>
+
+</div>
+
+</body>
+</html>
