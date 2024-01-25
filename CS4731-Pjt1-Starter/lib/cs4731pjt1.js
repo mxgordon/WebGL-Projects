@@ -57,8 +57,7 @@ function xmlGetLines(xmlDoc, defaultColor) {
             let y2 = thisLine.getAttribute("y2");
 
             //Add the vertices to the first list
-            polyLinePoints.push(vec2(parseFloat(x1), parseFloat(y1)));
-            polyLinePoints.push(vec2(parseFloat(x2), parseFloat(y2)));
+            polyLinePoints.push(vec4(parseFloat(x1), parseFloat(y1), parseFloat(x2), parseFloat(y2)));
 
             //We need a color value for each vertex to keep the fragment shader happy
             //Get the stroke color if it exists or the default color otherwise

@@ -8,9 +8,11 @@
         attribute vec4 vPosition;
         attribute vec4 vColor;
         varying vec4 fColor;
+		uniform mat4 projMatrix;
 
         void main() {
-            gl_Position = vPosition;
+            gl_Position =  projMatrix * vPosition;
+            gl_PointSize = 10.0;		// Point size
             fColor = vColor;			// Pass point color to fragment shader
         }
     </script>
@@ -48,6 +50,5 @@
     </form>
 
 </div>
-
 </body>
 </html>
