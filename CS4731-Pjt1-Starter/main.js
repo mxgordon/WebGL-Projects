@@ -1,3 +1,5 @@
+// For extra credit I included a button to export/download 
+// the current SVG displayed
 let svgDims = [0, 0, 1, 1];
 let zoom = 1;
 let rotation = 0
@@ -12,6 +14,11 @@ let realDims = [400, 400];
 let points = [];
 let colors = [];
 
+let pBuffer;
+let vPosition;
+let cBuffer;
+let vColor;
+
 let canvas;
 let program;
 let gl;
@@ -22,6 +29,7 @@ function handleFiles(event) {
         // Reset transformations and SVG data
         [points, colors] = [[], []];
         resetTransformations();
+
         // Parse SVG
         let parser = new DOMParser();
         let xmlDoc = parser.parseFromString(reader.result, "image/svg+xml");
@@ -68,22 +76,22 @@ function makeSquareAspectRatio() {
 
 function draw() {
     // Points buffer
-    var pBuffer = gl.createBuffer();
+    pBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW);
     
     // Bind points buffer to vPosition
-    var vPosition = gl.getAttribLocation(program,  "vPosition");
+    vPosition = gl.getAttribLocation(program,  "vPosition");
     gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(vPosition);
     
     // Colors buffer
-    var cBuffer = gl.createBuffer();
+    cBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
     
     // Bind colors to vColor
-    var vColor = gl.getAttribLocation(program,  "vColor");
+    vColor = gl.getAttribLocation(program,  "vColor");
     gl.vertexAttribPointer(vColor, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(vColor);
 	gl.clear(gl.COLOR_BUFFER_BIT);
@@ -149,9 +157,99 @@ function resetTransformations() {
     draw();
 }
 
+function multVec(matrix, vec) {
+    let result = [0, 0, 0, 0];
+    for (let i = 0; i < 4; i++) {
+        result[i] = matrix[i][0] * vec[0] +
+                    matrix[i][1] * vec[1] +
+                    matrix[i][2] * vec[2] +
+                    matrix[i][3] * vec[3];
+    }
+    return result;
+}
+
+function drawLine({offsetX, offsetY}) {
+    // Calculate normalized device coordinates from mouse coordinates
+    let x = (offsetX / canvas.width) * 2 - 1;
+    let y = -(offsetY / canvas.height) * 2 + 1;
+
+    // Apply the inverse transformations to the mouse coordinates
+    let invProjMat = inverse4(ortho(...getOrthoDims(), -1, 10));
+    let invTransformMat = inverse4(transformMat);
+    invTransformMat = mult(invTransformMat, invProjMat);
+
+    let transformedPoint = multVec(invTransformMat, [x, y, 0, 1]);
+
+    // Add object space point to array
+    points.push(vec4(transformedPoint[0], transformedPoint[1], 0, 1));
+
+    // Sets the line color
+    colors.push(vec4(0.0, 0.0, 0.0, 1.0)); 
+
+    // Update the points and colors buffers
+    gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
+
+    // Redraw the scene
+    draw();
+}
+
+function generateOutputSVG() {
+    let lines = []
+    lines.push(`<svg viewBox='${svgDims[0]} ${svgDims[1]} ${svgDims[2]} ${svgDims[3]}' xmlns='http://www.w3.org/2000/svg'>\n`);
+
+    for (let i = 0; i < points.length / 2; i++) {
+        lines.push(`<line x1='${points[i*2][0]}' y1='${points[i*2][1]}' x2='${points[i*2+1][0]}' y2='${points[i*2+1][1]}' stroke='${rgbaToHex(colors[i*2])}' />\n`);
+        console.log(rgbaToHex(colors[i*2]));
+        console.log(lines[i+1]);
+    }
+    lines.push("</svg>");
+    return lines;
+}
+
+function handleDownload() {
+    let file = new File(generateOutputSVG(), 'export.svg', {
+        type: 'image/svg+xml',
+    });
+
+    // Attaches virtual link element
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(file);
+
+    // Sets link source and file download
+    link.href = url;
+    link.download = file.name;
+    document.body.appendChild(link);
+    // Virtually clicks link to start file download
+    link.click();
+ 
+    // Removes virtual link
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+}
+
+
+function decToHex(dec) {
+    // converts decimal number to hexadecimal string
+    var hex = (Math.floor((dec*255))).toString(16);
+    return (hex.length == 1 ? "0" : "") + hex;
+  }
+  
+function rgbaToHex([r, g, b, a]) {
+    // Converts RGBA array to hexadecimal color code
+    return `#${decToHex(r)}${decToHex(g)}${decToHex(b)}`;
+}
+
 function main() {
     // Retrieve <canvas> element
     canvas = document.getElementById('webgl');
+
+    // Get download button object and attach listener
+    downloadBtn = document.getElementById('download');
+    downloadBtn.addEventListener("click", () => handleDownload());
 
     // File handler
     const inputElement = document.getElementById("fileupload");
@@ -171,6 +269,12 @@ function main() {
 
     // Reset handler
     document.addEventListener('keydown', evt => evt.key === "r" ? resetTransformations() : null);
+
+    canvas.addEventListener('contextmenu', evt => {
+        evt.preventDefault();
+        drawLine(evt);
+        return false;
+    }, false);
 
     // Get the rendering context for WebGL
     gl = WebGLUtils.setupWebGL(canvas);
