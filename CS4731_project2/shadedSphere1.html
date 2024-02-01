@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+
+// assume both position and normal are in homogeneous form
+
+attribute vec4 vPosition, vNormal, flatShading;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform vec4 diffuseProduct, specularProduct, ambientProduct;
+uniform vec4 lightPosition;
+uniform float shininess;
+
+varying vec4 fColor;
+
+
+void main()
+{
+    //Diffuse
+    vec3 pos = (modelViewMatrix * flatShading).xyz;
+    vec3 N = normalize(modelViewMatrix * vNormal).xyz;
+    vec3 L = normalize(lightPosition.xyz - pos);
+    vec4 diffuse = diffuseProduct * dot(L, N);
+
+    //Specular
+    vec3 V =  normalize(-pos);
+    vec3 R = (2.0 * dot(L, N) * N) - L;
+    vec4 specular = specularProduct * pow(max(dot(V, R), 0.0), shininess);
+
+    //Ambient
+    vec4 ambient = ambientProduct;
+
+    gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+	fColor = diffuse + specular + ambient;
+	fColor.a = 1.0;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+varying vec4 fColor;
+
+void main()
+{
+
+    gl_FragColor = fColor;
+
+}
+</script>
+
+<script type="text/javascript" src="lib/webgl-utils.js"></script>
+<script type="text/javascript" src="lib/initShaders.js"></script>
+
+<script type="text/javascript" src="lib/MV.js"></script>
+<script type="text/javascript" src="shadedSphere1.js"></script>
+
+<body>
+<canvas id="gl-canvas" width="512" height="512">
+Epic fail!
+</canvas>
+</body>
+</html>
