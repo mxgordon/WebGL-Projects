@@ -17,6 +17,7 @@
     
         gl_Position = projectionMatrix * cameraMatrix * modelViewMatrix * vPosition;
         fColor = vColor;
+        gl_PointSize = 10.0;		// Point size
     }
 </script>
 

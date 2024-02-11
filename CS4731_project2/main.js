@@ -8,68 +8,61 @@ let modelMat = scalem(1, 1, 1);
 
 let points = [];
 let colors = [];
-let index = 0;
+let indices = [];
 
-function triangle(a, b, c) {
-    points.push(a);
-    points.push(b);
-    points.push(c);
+let trackPoints = [];
+let trackColors = [];
 
-    // flatShadingArray.push(a);
-    // flatShadingArray.push(a);
-    // flatShadingArray.push(a);
 
-    // // normals are vectors
+function makeCube(center, radius) {
+    let [cx, cy, cz] = center;
 
-    // normalsArray.push(a[0],a[1], a[2], 0.0);
-    // normalsArray.push(a[0],a[1], a[2], 0.0);
-    // normalsArray.push(a[0],a[1], a[2], 0.0);
+    let points = [
+        vec4(cx-radius, cy-radius, cz+radius, 1), // Vertex 0
+        vec4(cx-radius, cy+radius, cz+radius, 1), // Vertex 1
+        vec4(cx+radius, cy+radius, cz+radius, 1), // Vertex 2
+        vec4(cx+radius, cy-radius, cz+radius, 1), // Vertex 3
+        vec4(cx-radius, cy-radius, cz-radius, 1), // Vertex 4
+        vec4(cx-radius, cy+radius, cz-radius, 1), // Vertex 5
+        vec4(cx+radius, cy+radius, cz-radius, 1), // Vertex 6
+        vec4(cx+radius, cy-radius, cz-radius, 1)  // Vertex 7
+    ];
 
-    index += 3;
+    // Define faces using indices into the vertices array
+    let indices = [
+        0, 1, 2,   0, 2, 3, // Front face
+        4, 5, 6,   4, 6, 7, // Back face
+        1, 5, 6,   1, 6, 2, // Top face
+        0, 4, 7,   0, 7, 3, // Bottom face
+        0, 1, 5,   0, 5, 4, // Left face
+        3, 2, 6,   3, 6, 7  // Right face
+    ];
+
+    return [points, indices];
 }
 
+function makeTrack() {
+    let trackPoints = [
+        vec4(5, 71, 0, 1),
+        vec4(42, 88, 0, 1),
+        vec4(92, 64, 0, 1),
+        vec4(64, 48, 0, 1),
+        vec4(77, 16, 0, 1),
+        vec4(20, 20, 0, 1),
+        vec4(25, 46, 0, 1),
+    ]
 
-function divideTriangle(a, b, c, count) {
-   if ( count > 0 ) {
+    let trackColors = trackPoints.map(() => vec4(0, 0, 0, 1));
 
-       var ab = mix( a, b, 0.5);
-       var ac = mix( a, c, 0.5);
-       var bc = mix( b, c, 0.5);
-
-       ab = normalize(ab, true);
-       ac = normalize(ac, true);
-       bc = normalize(bc, true);
-
-       divideTriangle( a, ab, ac, count - 1 );
-       divideTriangle( ab, b, bc, count - 1 );
-       divideTriangle( bc, c, ac, count - 1 );
-       divideTriangle( ab, bc, ac, count - 1 );
-   }
-   else {
-       triangle( a, b, c );
-   }
-}
-
-
-function tetrahedron(a, b, c, d, n) {
-   divideTriangle(a, b, c, n);
-   divideTriangle(d, c, b, n);
-   divideTriangle(a, d, b, n);
-   divideTriangle(a, c, d, n);
+    return [trackPoints, trackColors];
 }
 
 function render() {
-    gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    // eye = vec3(0, 0, 1.5);
-
-    // modelViewMatrix = lookAt(eye, at , up);
-    // projectionMatrix = ortho(left, right, bottom, ytop, near, far);
-
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     var pBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten([...points, ...trackPoints]), gl.STATIC_DRAW);
 
     var vPosition = gl.getAttribLocation( program, "vPosition");
     gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
@@ -77,11 +70,21 @@ function render() {
     
     var cBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten([...colors, ...trackColors]), gl.STATIC_DRAW);
 
     var vColor = gl.getAttribLocation( program, "vColor");
     gl.vertexAttribPointer(vColor, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(vColor);
+    
+    var iBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+    // Draw the cube
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+
+    // Draw track
+    gl.drawArrays(gl.LINES, indices.length, trackPoints.length);
 
     // gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix) );
     // gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix) );
@@ -89,8 +92,23 @@ function render() {
     // for( var i=0; i<index; i+=3)
     //     gl.drawArrays( gl.TRIANGLES, i, 3 );
     // gl.drawArrays( gl.LINE_LOOP, 0, index);
-    gl.drawArrays( gl.TRIANGLES, 0, index);
+    // gl.drawArrays( gl.TRIANGLES, 0, index);
 
+}
+
+function rotateAndDrawNewFrame() {
+    gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // modelMat = mult(modelMat, rotateX(3));
+    // modelMat = mult(modelMat, rotateY(-3));
+    // modelMat = mult(modelMat, rotateZ(3));
+    
+	let modelMatLoc = gl.getUniformLocation(program, 'modelViewMatrix');
+	gl.uniformMatrix4fv(modelMatLoc, false, flatten(modelMat));
+
+    // gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+
+    gl.drawArrays(gl.LINES, points.length, trackPoints.length);
 }
 
 
@@ -139,42 +157,41 @@ function main() {
 
     gl.enable(gl.DEPTH_TEST);
 
-	cameraMat = lookAt(vec3(0, 0, -80), vec3(0, 0, 0), vec3(0, 1, 0));
+	cameraMat = lookAt(vec3(0, 0, -86), vec3(0, 0, 0), vec3(0, 1, 0));
     
 	let cameraMatLoc = gl.getUniformLocation(program, 'cameraMatrix');
 	gl.uniformMatrix4fv(cameraMatLoc, false, flatten(cameraMat));
     
-    projectionMat = perspective(60, 1, 10, 100);
+    projectionMat = perspective(60, 1, 10, 120);
 	let projectionMatLoc = gl.getUniformLocation(program, 'projectionMatrix');
 	gl.uniformMatrix4fv(projectionMatLoc, false, flatten(projectionMat));
 
 	let modelMatLoc = gl.getUniformLocation(program, 'modelViewMatrix');
 	gl.uniformMatrix4fv(modelMatLoc, false, flatten(modelMat));
 
-    
-    let va = vec4(0.0, 0.0, -50,1);
-    let vb = vec4(0.0, 45, 16, 1);
-    let vc = vec4(-40, -45, 16, 1);
-    let vd = vec4(40, -45, 16,1);
 
-    tetrahedron(va, vb, vc, vd, 0);
+    [trackPoints, trackColors] = makeTrack();
+    
+    let [ps, is] = makeCube([0, 0, 0], 20);
+
+    points = ps;
+    indices = is;
+
+    console.log(ps, is);
+
     let c_arr = [1, 0, 0];
-    for (let i = 0; i < points.length/3; i++) {
+    for (let i = 0; i < points.length; i++) {
         colors.push(vec4(...c_arr, 1));
-        colors.push(vec4(...c_arr, 1));
-        colors.push(vec4(...c_arr, 1));
+        // colors.push(vec4(...c_arr, 1));
+        // colors.push(vec4(...c_arr, 1));
+        // colors.push(vec4(...c_arr, 1));
 
         c_arr.push(c_arr.splice(0, 1)[0]);
     }
 
-    points.forEach(point => {
-        let glPoint = projectPoint(point, modelMat, cameraMat, projectionMat);
-        console.log(`${glPoint}\n ${point}`);
-        // Optionally, draw a small square or circle at screenPoint for visualization
-    });
-    
-
-
-
     render();
+
+    let framerate = 30;
+
+    setInterval(rotateAndDrawNewFrame, 1000/framerate);
 }
