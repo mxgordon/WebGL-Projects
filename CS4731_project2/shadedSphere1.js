@@ -1,7 +1,7 @@
 var canvas;
 var gl;
 
-var numTimesToSubdivide = 8;
+var numTimesToSubdivide = 1;
 
 var index = 0;
 

@@ -178,7 +178,7 @@ function drawLine({offsetX, offsetY}) {
     let invTransformMat = inverse4(transformMat);
     invTransformMat = mult(invTransformMat, invProjMat);
 
-    let transformedPoint = multVec(invTransformMat, [x, y, 0, 1]);
+    let transformedPoint = mult(invTransformMat, [x, y, 0, 1]);
 
     // Add object space point to array
     points.push(vec4(transformedPoint[0], transformedPoint[1], 0, 1));
