@@ -5,6 +5,7 @@ let program;
 let projectionMat; 
 let cameraMat;
 let modelMat = scalem(1, 1, 1);
+let trackModelMat = scalem(1, 1, 1);
 
 let points = [];
 let colors = [];
@@ -46,13 +47,13 @@ function makeCube(center, radius) {
 
 function makeTrack() {
     let trackPoints = [
-        vec4(-45, 21, 0, 1),
-        vec4(-8, 38, 0, 1),
-        vec4(42, 14, 0, 1),
-        vec4(14, -2, 0, 1),
-        vec4(27, -34, 0, 1),
-        vec4(-30, -30, 0, 1),
-        vec4(-25, -4, 0, 1),
+        vec4(45, 21, 0, 1),
+        vec4(8, 38, 0, 1),
+        vec4(-42, 14, 0, 1),
+        vec4(-14, -2, 0, 1),
+        vec4(-27, -34, 0, 1),
+        vec4(30, -30, 0, 1),
+        vec4(25, -4, 0, 1),
     ]
 
     let trackColors = trackPoints.map(() => vec4(0, 0, 0, 1));
@@ -86,30 +87,56 @@ function render() {
     // Draw the cube
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
+    
+	let modelMatLoc = gl.getUniformLocation(program, 'modelViewMatrix');
+	gl.uniformMatrix4fv(modelMatLoc, false, flatten(trackModelMat));
+
     // Draw track
     gl.drawArrays(gl.LINE_LOOP, indices.length, trackPoints.length);
+}
 
-    // gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix) );
-    // gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix) );
+function stepCubeForward() {
+    let stepSize = 1;
 
-    // for( var i=0; i<index; i+=3)
-    //     gl.drawArrays( gl.TRIANGLES, i, 3 );
-    // gl.drawArrays( gl.LINE_LOOP, 0, index);
-    // gl.drawArrays( gl.TRIANGLES, 0, index);
+    let backPoint = trackPoints[activeLine];
+    let nextPoint = trackPoints[(activeLine + 1) % trackPoints.length];
 
+    backPoint[3] = 0;  // clear the W channel just for this math
+    nextPoint[3] = 0;
+
+    let line = subtract(nextPoint, backPoint);
+    let len = length(line);
+    if (stepSize / len + linePos > 1) {  // Check if the box is going to move to the next line
+        stepSize = (stepSize / len + linePos - 1) * len;
+        activeLine += 1;
+        activeLine %= trackPoints.length;
+        let followingPoint = trackPoints[(activeLine + 1) % trackPoints.length];
+        followingPoint[3] = 0;  // Clear the W channel
+
+        
+        line = subtract(followingPoint, nextPoint)
+        len = length(line);
+
+        linePos = stepSize / len;
+    } else {
+        linePos += stepSize / len;
+    }
+    let translation = scale(stepSize, normalize(line));
+
+    modelMat = mult(modelMat, translate(translation[0], translation[1], translation[2]));
 }
 
 function rotateAndDrawNewFrame() {
     gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // modelMat = mult(modelMat, rotateX(3));
-    // modelMat = mult(modelMat, rotateY(-3));
-    // modelMat = mult(modelMat, rotateZ(3));
+    stepCubeForward();
     
 	let modelMatLoc = gl.getUniformLocation(program, 'modelViewMatrix');
 	gl.uniformMatrix4fv(modelMatLoc, false, flatten(modelMat));
 
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+
+	gl.uniformMatrix4fv(modelMatLoc, false, flatten(trackModelMat));
 
     gl.drawArrays(gl.LINE_LOOP, points.length, trackPoints.length);
 }
@@ -171,7 +198,7 @@ function main() {
 
     [trackPoints, trackColors] = makeTrack();
 
-    modelMat = translate(trackPoints[0], trackPoints[1], trackPoints[2]);
+    modelMat = translate(trackPoints[0][0], trackPoints[0][1], trackPoints[0][2]);
     console.log(modelMat);
 
 	let modelMatLoc = gl.getUniformLocation(program, 'modelViewMatrix');
@@ -179,7 +206,7 @@ function main() {
 
 
     
-    let [ps, is] = makeCube([0, 0, 0], 20);
+    let [ps, is] = makeCube([0, 0, 0], 5);
 
     points = ps;
     indices = is;
