@@ -13,6 +13,9 @@ let indices = [];
 let trackPoints = [];
 let trackColors = [];
 
+let activeLine = 0;
+let linePos = 0;
+
 
 function makeCube(center, radius) {
     let [cx, cy, cz] = center;
@@ -43,13 +46,13 @@ function makeCube(center, radius) {
 
 function makeTrack() {
     let trackPoints = [
-        vec4(5, 71, 0, 1),
-        vec4(42, 88, 0, 1),
-        vec4(92, 64, 0, 1),
-        vec4(64, 48, 0, 1),
-        vec4(77, 16, 0, 1),
-        vec4(20, 20, 0, 1),
-        vec4(25, 46, 0, 1),
+        vec4(-45, 21, 0, 1),
+        vec4(-8, 38, 0, 1),
+        vec4(42, 14, 0, 1),
+        vec4(14, -2, 0, 1),
+        vec4(27, -34, 0, 1),
+        vec4(-30, -30, 0, 1),
+        vec4(-25, -4, 0, 1),
     ]
 
     let trackColors = trackPoints.map(() => vec4(0, 0, 0, 1));
@@ -84,7 +87,7 @@ function render() {
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
     // Draw track
-    gl.drawArrays(gl.LINES, indices.length, trackPoints.length);
+    gl.drawArrays(gl.LINE_LOOP, indices.length, trackPoints.length);
 
     // gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix) );
     // gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix) );
@@ -106,9 +109,9 @@ function rotateAndDrawNewFrame() {
 	let modelMatLoc = gl.getUniformLocation(program, 'modelViewMatrix');
 	gl.uniformMatrix4fv(modelMatLoc, false, flatten(modelMat));
 
-    // gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
-    gl.drawArrays(gl.LINES, points.length, trackPoints.length);
+    gl.drawArrays(gl.LINE_LOOP, points.length, trackPoints.length);
 }
 
 
@@ -166,11 +169,15 @@ function main() {
 	let projectionMatLoc = gl.getUniformLocation(program, 'projectionMatrix');
 	gl.uniformMatrix4fv(projectionMatLoc, false, flatten(projectionMat));
 
+    [trackPoints, trackColors] = makeTrack();
+
+    modelMat = translate(trackPoints[0], trackPoints[1], trackPoints[2]);
+    console.log(modelMat);
+
 	let modelMatLoc = gl.getUniformLocation(program, 'modelViewMatrix');
 	gl.uniformMatrix4fv(modelMatLoc, false, flatten(modelMat));
 
 
-    [trackPoints, trackColors] = makeTrack();
     
     let [ps, is] = makeCube([0, 0, 0], 20);
 
