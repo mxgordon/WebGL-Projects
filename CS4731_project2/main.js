@@ -17,6 +17,8 @@ let trackColors = [];
 let activeLine = 0;
 let linePos = 0;
 
+let isWireframe = true;
+
 
 function makeCube(center, radius) {
     let [cx, cy, cz] = center;
@@ -143,14 +145,6 @@ function rotateAndDrawNewFrame() {
 
 
 function projectPoint(point, modelMat, cameraMat, projectionMat) {
-    // console.log(point, modelMat, cameraMat, projectionMat);
-    // let worldPoint = mult(modelMat, point);
-    // let viewPoint = mult(projectionMat, worldPoint);
-    // let projectedPoint = mult(cameraMat, viewPoint);
-    // let allMat = mult()
-
-    // let projectedPoint = mult(mult(mult(projectionMat, cameraMat), modelMat), point);
-
     let worldVertex = mult(modelMat, point);
 
     // Apply view transformation
@@ -159,7 +153,6 @@ function projectPoint(point, modelMat, cameraMat, projectionMat) {
     // Apply projection transformation
     let projectedVertex = mult(projectionMat, viewVertex);
 
-    // return normalizeToScreenCoordinates(projectedPoint, canvasWidth, canvasHeight);
     return projectedVertex;
 }
 
@@ -187,7 +180,7 @@ function main() {
 
     gl.enable(gl.DEPTH_TEST);
 
-	cameraMat = lookAt(vec3(0, 0, -86), vec3(0, 0, 0), vec3(0, 1, 0));
+	cameraMat = lookAt(vec3(0, 0, -100), vec3(0, 0, 0), vec3(0, 1, 0));
     
 	let cameraMatLoc = gl.getUniformLocation(program, 'cameraMatrix');
 	gl.uniformMatrix4fv(cameraMatLoc, false, flatten(cameraMat));
