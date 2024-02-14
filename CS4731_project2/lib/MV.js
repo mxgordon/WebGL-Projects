@@ -64,6 +64,21 @@ function vec4()
     return result.splice( 0, 4 );
 }
 
+function vec4b()
+{
+    var result = _argumentsToArray( arguments );
+
+    switch ( result.length ) {
+    case 0: result.push( 0.0 );
+    case 1: result.push( 0.0 );
+    case 2: result.push( 0.0 );
+    case 3: result.push( 0.0 );
+    case 4: result[3]=0;
+    }
+
+    return result.splice( 0, 4 );
+}
+
 //----------------------------------------------------------------------------
 //
 //  Matrix Constructors

@@ -2,79 +2,128 @@
 <html>
 
 <script id="vertex-shader" type="x-shader/x-vertex">
-    attribute vec4 vPosition;
-    //attribute vec4 vColor;
+    precision mediump float;
+    precision highp int;
+    
+    attribute vec4 vPosition, vNormal;
     
     uniform mat4 modelMatrix;
     uniform mat4 projectionMatrix;
     uniform mat4 cameraMatrix;
 
-    //uniform int isWireframe;
+    uniform vec4 lightDiffuse, lightSpecular, lightAmbient;
+    uniform vec4 materialDiffuse, materialSpecular, materialAmbient;
+    uniform float shininess;
+
+    uniform int isWireframe;
+    uniform int isGouraud;
     uniform vec4 currentColor;
+    uniform vec4 lightPosition;
     
     varying vec4 fColor;
+    varying vec3 L, N, V;
     
     
     void main() {
-        //if (isWireframe == 1) {
-        //    fColor = wireColor;
-        //} else {
-        //    fColor = vColor;
-        //}
-        fColor = currentColor;
+
+        if (isWireframe == 1) {
+            fColor = currentColor;
+        } else if (isGouraud == 1) {
+            //Diffuse
+            //Calculate L
+            vec4 nm = vNormal;
+            nm.w = 1.0;     //To calculate the lighting vector, we need to convert the normal position
+            vec3 pos = (cameraMatrix * modelMatrix * nm).xyz;
+            L = normalize(lightPosition.xyz - pos);
+        
+            //Calculate N
+            //Here, we need to convert the normal direction (not the position)
+            N = normalize(cameraMatrix * modelMatrix * vNormal).xyz;
+        
+            //Id = Ld kd dot(l • n)
+            vec4 diffuse = lightDiffuse * materialDiffuse * dot(L, N);
+        
+        
+            //Specular
+            //V = origin - pos = -pos
+            V = normalize(-pos);
+        
+            //Specular
+            //r = (2 (l · n ) n) - l
+            vec3 R = 2.0 * (dot(L, N) * N) - L;
+        
+            //Is = Ls Ks dot(V, R)^a
+            vec4 specular = lightSpecular * materialSpecular * pow(max(dot(V, R), 0.0), shininess);
+        
+            //Ambient
+            //Ia = Laka
+            vec4 ambient = lightAmbient * materialAmbient;
+
+            fColor = diffuse + specular + ambient;
+            fColor.a = 1.0;
+        } else {
+            //Diffuse
+            //Calculate L
+            vec4 nm = vNormal;
+            nm.w = 1.0;     //To calculate the lighting vector, we need to convert the normal position
+            vec3 pos = (cameraMatrix * modelMatrix * nm).xyz;
+            L = normalize(lightPosition.xyz - pos);
+        
+            //Calculate N
+            //Here, we need to convert the normal direction (not the position)
+            N = normalize(cameraMatrix * modelMatrix * vNormal).xyz;
+        
+            //Specular
+            //V = origin - pos = -pos
+            V = normalize(-pos);
+        }
+        
 
         gl_Position = projectionMatrix * cameraMatrix * modelMatrix * vPosition;
         gl_PointSize = 10.0;		// Point size
     }
 </script>
 
-    <script id="vertex-shader2" type="x-shader/x-vertex">
-// assume both position and normal are in homogeneous form
-
-attribute vec4 vPosition;
-attribute vec4 vColor;
-
-// attribute vec4 vNormal, flatShading;
-uniform mat4 modelViewMatrix;
-uniform mat4 projectionMatrix;
-uniform mat4 cameraMatrix;
-// uniform vec4 diffuseProduct, specularProduct, ambientProduct;
-// uniform vec4 lightPosition;
-// uniform float shininess;
-
-varying vec4 fColor;
-
-
-void main()
-{
-    //Diffuse
-    // vec3 pos = (modelViewMatrix * flatShading).xyz;
-    // vec3 N = normalize(modelViewMatrix * vNormal).xyz;
-    // vec3 L = normalize(lightPosition.xyz - pos);
-    // vec4 diffuse = diffuseProduct * dot(L, N);
-
-    //Specular
-    // vec3 V =  normalize(-pos);
-    // vec3 R = (2.0 * dot(L, N) * N) - L;
-    // vec4 specular = specularProduct * pow(max(dot(V, R), 0.0), shininess);
-
-    //Ambient
-    // vec4 ambient = ambientProduct;
-
-    gl_Position = cameraMatrix * projectionMatrix * modelViewMatrix * vPosition;
-    fColor = vColor;
-	// fColor = diffuse + specular + ambient;
-	// fColor.a = 1.0;
-}
-    </script>
-
     <script id="fragment-shader" type="x-shader/x-fragment">
 precision mediump float;
+precision highp int;
 
+uniform vec4 lightDiffuse, lightSpecular, lightAmbient;
+uniform vec4 materialDiffuse, materialSpecular, materialAmbient;
+uniform float shininess;
+
+uniform int isWireframe;
+uniform int isGouraud;
+
+varying vec3 L, N, V;
 varying vec4 fColor;
 
+
 void main() {
-    gl_FragColor = fColor;
+    if (isWireframe + isGouraud > 0) {
+        gl_FragColor = fColor;
+    } else {
+        //Diffuse
+        //Id = Ld kd dot(l • n)
+        vec4 diffuse = lightDiffuse * materialDiffuse * dot(L, N);
+    
+        //Specular
+        //r = (2 (l · n ) n) - l
+        vec3 R = 2.0 * (dot(L, N) * N) - L;
+    
+        //Is = Ls Ks dot(V, R)^a
+        vec4 specular = lightSpecular * materialSpecular * pow(max(dot(V, R), 0.0), shininess);
+    
+        //Ambient
+        //Ia = Laka
+        vec4 ambient = lightAmbient * materialAmbient;
+    
+        vec4 fColor = diffuse + specular + ambient;
+        fColor.a = 1.0;
+    
+        gl_FragColor = fColor;
+
+    }
 }
     </script>
 

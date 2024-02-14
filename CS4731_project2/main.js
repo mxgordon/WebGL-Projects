@@ -7,8 +7,6 @@ let cameraMat;
 let modelMat = scalem(1, 1, 1);
 let trackModelMat = scalem(1, 1, 1);
 
-let colors = [];
-
 let allSubdivs = [];
 let activeSubdiv = 0;
 
@@ -23,6 +21,18 @@ let isMoving = false;
 
 let wireColor = vec4(1, 1, 1, 1);
 let shadedColor = vec4(1, .4, .05, 1);
+
+let lightPosition = vec4(0, 0, 0, 1.0 ); 
+let lightAmbient = vec4(0.3, 0.3, 0.3, 1.0 );
+let lightDiffuse = vec4( 1.0, 1.0, 1.0, 1.0 );
+let lightSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
+
+let materialAmbient = vec4( .9, 0.0, 1.0, 1.0 );
+let materialDiffuse = vec4( 1.0, 1.0, 0.0, 1.0 );
+let materialSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
+let materialShininess = 20.0;
+
+let isGouraudShading = true;
 
 // returns the average of an arbitrary amount of points
 function avgPoints(...points) {
@@ -126,7 +136,12 @@ function catmullClarkSubdiv({points, edges, faces, start, size, indices_start, i
         newIndices.push(...f.slice(0, 3).map(v => v+newStart), f[0] + newStart, ...f.slice(2, 4).map(v => v + newStart)); // procedurally generate the indices
     }
 
-    return {points: newPoints, edges: newEdges, faces: newFaces, indices: newIndices, start: newStart, size: newPoints.length, indices_start: indices_start + indices_size, indices_size: newIndices.length };
+    let normals = [];
+    for (let p of newPoints) {
+        normals.push(vec4b(...p));
+    }
+
+    return {points: newPoints, edges: newEdges, faces: newFaces, indices: newIndices, start: newStart, size: newPoints.length, indices_start: indices_start + indices_size, indices_size: newIndices.length, normals };
 }
 
 function chaikinCornerCut(loop) {
@@ -189,12 +204,17 @@ function makeCube(center, radius) {
 
     ]
 
-    let indices = []
+    let indices = [];
     for (let f of faces) {
-        indices.push(...f.slice(0, 3), f[0], ...f.slice(2, 4)); // procedurally generate the indices by triangulated the
+        indices.push(...f.slice(0, 3), f[0], ...f.slice(2, 4)); // procedurally generate the indices by triangulated the faces
+    }
+    
+    let normals = [];
+    for (let p of points) {
+        normals.push(vec4b(...p));
     }
 
-    return {points, edges, faces, indices, start: 0, size: points.length, indices_start: 0, indices_size: indices.length};
+    return {points, edges, faces, indices, start: 0, size: points.length, indices_start: 0, indices_size: indices.length, normals};
 }
 
 function makeTrack() {
@@ -219,9 +239,18 @@ function loadModelData() {
     gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);  // load all the points from each subdivision into the buffer
     gl.bufferData(gl.ARRAY_BUFFER, flatten([...allSubdivs.map(v => v.points).flat(1), ...trackSubdiv.flat(1)]), gl.STATIC_DRAW);
 
-    var vPosition = gl.getAttribLocation( program, "vPosition");
+    let vPosition = gl.getAttribLocation( program, "vPosition");
     gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(vPosition);  // link the buffer with the shader
+
+    let nBuffer = gl.createBuffer();
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);  // load all the points from each subdivision into the buffer
+    gl.bufferData(gl.ARRAY_BUFFER, flatten([...allSubdivs.map(v => v.normals).flat(1)]), gl.STATIC_DRAW);
+
+    let vNormal = gl.getAttribLocation( program, "vNormal");
+    gl.vertexAttribPointer(vNormal, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vNormal);  // link the buffer with the shader
 
     let iBuffer = gl.createBuffer();
     
@@ -271,6 +300,9 @@ function drawNewFrame() {
     
 	let colorLoc = gl.getUniformLocation(program, 'currentColor');  // set draw color for cube
 	gl.uniform4fv(colorLoc, isWireframe ? wireColor : shadedColor);
+    
+    gl.uniform1i(gl.getUniformLocation(program, "isWireframe"), isWireframe);
+    gl.uniform1i(gl.getUniformLocation(program, "isGouraud"), isGouraudShading);
 
     // draw cube, accounts for whether its supposed to be wireframe
     gl.drawElements(isWireframe? gl.LINE_LOOP : gl.TRIANGLES, allSubdivs[activeSubdiv].indices_size, gl.UNSIGNED_SHORT, allSubdivs[activeSubdiv].indices_start*2);
@@ -278,6 +310,8 @@ function drawNewFrame() {
 	gl.uniformMatrix4fv(modelMatLoc, false, flatten(trackModelMat)); // sets the model matrix for the track
     
 	gl.uniform4fv(colorLoc, wireColor);  // set draw color for track
+
+    gl.uniform1i(gl.getUniformLocation(program, "isWireframe"), 1);
 
     // draws track
     gl.drawArrays(gl.LINE_LOOP, allSubdivs[5].start + allSubdivs[5].size + trackSubdiv[activeTrackSubdiv].start, trackSubdiv[activeTrackSubdiv].length);
@@ -353,6 +387,17 @@ function main() {
 	let projectionMatLoc = gl.getUniformLocation(program, 'projectionMatrix');
 	gl.uniformMatrix4fv(projectionMatLoc, false, flatten(projectionMat));
 
+    
+    gl.uniform4fv(gl.getUniformLocation(program, "lightDiffuse"), flatten(lightDiffuse));
+    gl.uniform4fv(gl.getUniformLocation(program, "materialDiffuse"), flatten(materialDiffuse));
+    gl.uniform4fv(gl.getUniformLocation(program, "lightSpecular"), flatten(lightSpecular));
+    gl.uniform4fv(gl.getUniformLocation(program, "materialSpecular"), flatten(materialSpecular));
+    gl.uniform4fv(gl.getUniformLocation(program, "lightAmbient"), flatten(lightAmbient));
+    gl.uniform4fv(gl.getUniformLocation(program, "materialAmbient"), flatten(materialAmbient));
+
+    gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(lightPosition));
+    gl.uniform1f(gl.getUniformLocation(program, "shininess"), materialShininess);
+
     // create track
     trackSubdiv.push(makeTrack());
 
@@ -378,6 +423,7 @@ function main() {
     // set listeners for the keypresses
     document.addEventListener("keydown", (evt => evt.key === "m" ? isWireframe = !isWireframe : null));
     document.addEventListener("keydown", (evt => evt.key === "a" ? isMoving = !isMoving : null));
+    document.addEventListener("keydown", (evt => evt.key === "l" ? isGouraudShading = !isGouraudShading : null));
     document.addEventListener("keydown", (evt => toggleSubdiv(evt.key)));
     document.addEventListener("keydown", (evt => toggleTrackSubdiv(evt.key)));
 
