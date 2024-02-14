@@ -3,20 +3,27 @@
 
 <script id="vertex-shader" type="x-shader/x-vertex">
     attribute vec4 vPosition;
-    attribute vec4 vColor;
+    //attribute vec4 vColor;
     
-    uniform mat4 modelViewMatrix;
+    uniform mat4 modelMatrix;
     uniform mat4 projectionMatrix;
     uniform mat4 cameraMatrix;
+
+    //uniform int isWireframe;
+    uniform vec4 currentColor;
     
     varying vec4 fColor;
     
     
-    void main()
-    {
-    
-        gl_Position = projectionMatrix * cameraMatrix * modelViewMatrix * vPosition;
-        fColor = vColor;
+    void main() {
+        //if (isWireframe == 1) {
+        //    fColor = wireColor;
+        //} else {
+        //    fColor = vColor;
+        //}
+        fColor = currentColor;
+
+        gl_Position = projectionMatrix * cameraMatrix * modelMatrix * vPosition;
         gl_PointSize = 10.0;		// Point size
     }
 </script>
