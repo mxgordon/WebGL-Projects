@@ -12,7 +12,8 @@ let colors = [];
 let allSubdivs = [];
 let activeSubdiv = 0;
 
-let trackPoints = [];
+let trackSubdiv = [];
+let activeTrackSubdiv = 0;
 
 let activeLine = 0;
 let lineDistance = 0;
@@ -128,6 +129,24 @@ function catmullClarkSubdiv({points, edges, faces, start, size, indices_start, i
     return {points: newPoints, edges: newEdges, faces: newFaces, indices: newIndices, start: newStart, size: newPoints.length, indices_start: indices_start + indices_size, indices_size: newIndices.length };
 }
 
+function chaikinCornerCut(loop) {
+    let newPoints = [];
+    let ratio = 1/4;
+
+    for (let i = 0; i < loop.length; i++) {
+        let firstPnt = loop[i];
+        let secondPnt = loop[(i + 1) % loop.length];
+
+        let path = subtract(secondPnt, firstPnt);
+
+        newPoints.push(add(firstPnt, scale(ratio, path)));
+        newPoints.push(add(firstPnt, scale(1 - ratio, path)));
+    }
+
+    newPoints.start = loop.start + loop.length;
+
+    return newPoints;
+}
 
 function makeCube(center, radius) {
     let [cx, cy, cz] = center;
@@ -144,17 +163,17 @@ function makeCube(center, radius) {
     ];
 
     let edges = [  // indices of points
-        [0, 1],
+        [0, 1],  // bottom edges
         [1, 2],
         [2, 3],
         [3, 0],
 
-        [0, 4],
+        [0, 4],  // side edges
         [1, 5],
         [2, 6],
         [3, 7],
 
-        [4, 5],
+        [4, 5],  // top edges
         [5, 6],
         [6, 7],
         [7, 4]
@@ -179,7 +198,7 @@ function makeCube(center, radius) {
 }
 
 function makeTrack() {
-    let trackPoints = [  // list of points that creates the "track"
+    let trackPoints = [  // list of points that creates the "loop"
         vec4(45, 21, 0, 1),
         vec4(8, 47, 0, 1),
         vec4(-42, 14, 0, 1),
@@ -188,7 +207,7 @@ function makeTrack() {
         vec4(40, -46, 0, 1),
         vec4(25, -4, 0, 1),
     ]
-
+    trackPoints.start = 0;
     return trackPoints;
 }
 
@@ -198,7 +217,7 @@ function loadModelData() {
     let pBuffer = gl.createBuffer();
     
     gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);  // load all the points from each subdivision into the buffer
-    gl.bufferData(gl.ARRAY_BUFFER, flatten([...allSubdivs.map(v => v.points).flat(1), ...trackPoints]), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten([...allSubdivs.map(v => v.points).flat(1), ...trackSubdiv.flat(1)]), gl.STATIC_DRAW);
 
     var vPosition = gl.getAttribLocation( program, "vPosition");
     gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
@@ -210,8 +229,9 @@ function loadModelData() {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([...allSubdivs.map(v => v.indices)].flat(1)), gl.STATIC_DRAW);
 }
 
-function stepCubeForward() {
+function stepCubeForward(nomove=false) {
     let stepSize = 1;
+    let trackPoints = trackSubdiv[activeTrackSubdiv];
 
     let backPoint = trackPoints[activeLine];  // find the endpoints of the path its on
     let nextPoint = trackPoints[(activeLine + 1) % trackPoints.length];
@@ -219,7 +239,13 @@ function stepCubeForward() {
     let path = subtract(nextPoint, backPoint);  // calculate the path the shape will travel
     let stepDistance = (stepSize / length(path));
 
-    if (stepDistance > 1 - lineDistance ) {  // Does the cube need to change to the next line?
+    if (nomove) {
+        let newPos = add(backPoint, scale(lineDistance, path));  // calculate the old position
+        modelMat = translate(...newPos);  // generate the  transformation matrix
+        return 
+    }
+
+    while (stepDistance > 1 - lineDistance ) {  // Does the cube need to change to the next line?
         activeLine = (activeLine + 1) % trackPoints.length;  // advance to the next line
         backPoint = nextPoint;
         nextPoint = trackPoints[(activeLine + 1) % trackPoints.length];  // pick the next point
@@ -228,7 +254,7 @@ function stepCubeForward() {
     }
     lineDistance += stepDistance;  // increment the position
     
-    newPos = add(backPoint, scale(lineDistance, path));  // calculate the new position
+    let newPos = add(backPoint, scale(lineDistance, path));  // calculate the new position
 
     modelMat = translate(...newPos);  // generate the new transformation matrix
 }
@@ -254,7 +280,7 @@ function drawNewFrame() {
 	gl.uniform4fv(colorLoc, wireColor);  // set draw color for track
 
     // draws track
-    gl.drawArrays(gl.LINE_LOOP, allSubdivs[5].start + allSubdivs[5].size, trackPoints.length);
+    gl.drawArrays(gl.LINE_LOOP, allSubdivs[5].start + allSubdivs[5].size + trackSubdiv[activeTrackSubdiv].start, trackSubdiv[activeTrackSubdiv].length);
 }
 
 function toggleSubdiv(key) {
@@ -263,6 +289,32 @@ function toggleSubdiv(key) {
         
     } else if (key === "e" && activeSubdiv < (allSubdivs.length - 1)) {  // if e is pressed, subdivide cube
         activeSubdiv++;
+    }
+}
+
+function toggleTrackSubdiv(key) {
+    if (key === "j" && activeTrackSubdiv > 0) {  // if q is pressed, unsubdivide cube
+        activeTrackSubdiv--;
+
+        activeLine = activeLine / 2 + 0.25 + (lineDistance * .5);  // adjust the new active line and line distance values
+        lineDistance = activeLine % 1;
+        activeLine = Math.floor(activeLine) % trackSubdiv[activeTrackSubdiv].length;
+        
+        stepCubeForward(true);  // regenerate cube position
+        
+    } else if (key === "i" && activeTrackSubdiv < (trackSubdiv.length - 1)) {  // if e is pressed, subdivide cube
+        activeTrackSubdiv++;
+        
+        let adjust = Math.floor(lineDistance * 2 - 0.5)   // adjust the new active line and line distance values
+        activeLine = (activeLine*2 + adjust) % trackSubdiv[activeTrackSubdiv].length;
+        
+        if (activeLine === -1) {
+            activeLine = trackSubdiv[activeTrackSubdiv].length - 1;
+        } 
+        
+        lineDistance = (lineDistance * 2 + .5) % 1;
+
+        stepCubeForward(true);// regenerate cube position
     }
 }
 
@@ -302,10 +354,14 @@ function main() {
 	gl.uniformMatrix4fv(projectionMatLoc, false, flatten(projectionMat));
 
     // create track
-    trackPoints = makeTrack();
+    trackSubdiv.push(makeTrack());
+
+    for (let i = 0; i < 8; i++) {
+        trackSubdiv.push(chaikinCornerCut(trackSubdiv[i]));
+    }
 
     // position the cube at the start of the track
-    modelMat = translate(trackPoints[0][0], trackPoints[0][1], trackPoints[0][2]);
+    modelMat = translate(...trackSubdiv[0][0]);
 
 	let modelMatLoc = gl.getUniformLocation(program, 'modelViewMatrix');
 	gl.uniformMatrix4fv(modelMatLoc, false, flatten(modelMat));
@@ -315,16 +371,15 @@ function main() {
     allSubdivs.push(cube);
 
     // make the 5 subdivisions for the cube
-    allSubdivs.push(catmullClarkSubdiv(allSubdivs[0]));
-    allSubdivs.push(catmullClarkSubdiv(allSubdivs[1]));
-    allSubdivs.push(catmullClarkSubdiv(allSubdivs[2]));
-    allSubdivs.push(catmullClarkSubdiv(allSubdivs[3]));
-    allSubdivs.push(catmullClarkSubdiv(allSubdivs[4]));
+    for (let i = 0; i < 5; i++) {
+        allSubdivs.push(catmullClarkSubdiv(allSubdivs[i]));
+    }
 
     // set listeners for the keypresses
     document.addEventListener("keydown", (evt => evt.key === "m" ? isWireframe = !isWireframe : null));
     document.addEventListener("keydown", (evt => evt.key === "a" ? isMoving = !isMoving : null));
     document.addEventListener("keydown", (evt => toggleSubdiv(evt.key)));
+    document.addEventListener("keydown", (evt => toggleTrackSubdiv(evt.key)));
 
     // load data into GPU
     loadModelData();
