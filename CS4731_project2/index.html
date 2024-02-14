@@ -43,7 +43,6 @@
             //Id = Ld kd dot(l • n)
             vec4 diffuse = lightDiffuse * materialDiffuse * dot(L, N);
         
-        
             //Specular
             //V = origin - pos = -pos
             V = normalize(-pos);
@@ -78,13 +77,12 @@
             V = normalize(-pos);
         }
         
-
         gl_Position = projectionMatrix * cameraMatrix * modelMatrix * vPosition;
         gl_PointSize = 10.0;		// Point size
     }
 </script>
 
-    <script id="fragment-shader" type="x-shader/x-fragment">
+<script id="fragment-shader" type="x-shader/x-fragment">
 precision mediump float;
 precision highp int;
 
