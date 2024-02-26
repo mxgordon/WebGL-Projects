@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>CS 4731 Final Project Part I</title>
+        <script id="vshader" type="x-shader/x-vertex">
+            attribute vec4 vPosition;
+
+            void main() {
+                gl_Position = vPosition;
+            }
+        </script>
+
+        <script id="fshader" type="x-shader/x-fragment">
+            precision mediump float;
+            void main() {
+                    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+                }
+        </script>
+
+        <script type="text/javascript" src="lib/webgl-utils.js"></script>
+        <script type="text/javascript" src="lib/initShaders.js"></script>
+        <script type="text/javascript" src="lib/MV.js"></script>
+
+        <script type="text/javascript" src="lib/model.js"></script>
+        <script type="text/javascript" src="lib/face.js"></script>
+        <script type="text/javascript" src="main.js"></script>
+
+    </head>
+
+    <body onload="main()">
+        <h1 id="mode">CS 4731 Final Project</h1>
+
+        <canvas id="webgl" class="box" width="1600" height="900">
+            Please use a browser that supports the "canvas" tag.
+        </canvas>
+    </body>
+</html>
