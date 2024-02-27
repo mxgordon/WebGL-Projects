@@ -17,10 +17,12 @@ let up = vec3(0, 1, 0);
 let faces = [];
 let colors = [];
 
-// let modelTransform = mult(rotateX(45), mult(rotateY(0), rotateZ(0)));
 let modelTransform = scalem(1, 1, 1);
 let projectionMat = perspective(60, 1, 0.1, 40);
 let cameraViewMat = lookAt(eye, at, up);
+
+let lightLoc = vec4(0, 3, 0, 1);
+let lightActive = true;
 
 function renderModel(model) {
     console.log(model);
