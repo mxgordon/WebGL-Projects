@@ -9,7 +9,7 @@ class Model {
     objParsed = false;          // Whether the object file has been parsed
     mtlParsed = false;          // Whether the material file has been parsed
 
-    readyState = false;               // Wether the model is ready for use
+    readyState = false;         // Wether the model is ready for use
 
     faces = [];                 // The faces that make up the model (array of Face objects)
 
@@ -107,7 +107,7 @@ class Model {
         }
 
         this.mtlParsed = true;
-        this.ready = this.objParsed;
+        this.readyState = this.objParsed;
 
         console.log("Diffuse map:");
         console.log(this.diffuseMap);
@@ -154,7 +154,7 @@ class Model {
         }
         
         this.objParsed = true;
-        this.ready = this.mtlParsed;
+        this.readyState = this.mtlParsed;
 
         console.log("Faces:");
         console.log(this.faces);
