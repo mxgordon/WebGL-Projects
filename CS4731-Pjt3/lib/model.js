@@ -5,6 +5,7 @@ class Model {
 
     textured = false;           // Whether this model is textured
     imagePath = null;           // The URL of the texture image, if one is used
+    image = null;
 
     objParsed = false;          // Whether the object file has been parsed
     mtlParsed = false;          // Whether the material file has been parsed
@@ -101,13 +102,20 @@ class Model {
                 // Note that any model will have at most one texture file
                 this.imagePath = "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/" + line.substring(line.indexOf(' ') + 1);
 
+                this.image = new Image();
+                this.image.crossOrigin = "";
+                this.image.src = this.imagePath;
+                this.image.onload = (function()  {
+                    this.readyState = this.objParsed;
+                }).bind(this);
+
                 // Set textured flag
                 this.textured = true;
             }
         }
 
         this.mtlParsed = true;
-        this.readyState = this.objParsed;
+        this.readyState = this.textured? false : this.objParsed;
 
         console.log("Diffuse map:");
         console.log(this.diffuseMap);

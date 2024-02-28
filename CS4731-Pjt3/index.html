@@ -4,30 +4,93 @@
         <meta charset="UTF-8">
         <title>CS 4731 Final Project Part I</title>
         <script id="vshader" type="x-shader/x-vertex">
-            attribute vec4 vPosition;
-            attribute vec4 vColor;
+            precision mediump float;
+            precision highp int;
 
+            attribute vec4 vPosition, materialDiffuse, materialSpecular, vNormal;
+            
+            uniform vec4 lightDiffuse, lightSpecular, lightAmbient;
+            
+            uniform float shininess;
+            
             uniform mat4 modelMatrix;
             uniform mat4 projectionMatrix;
             uniform mat4 cameraMatrix;
-
             
-            varying vec4 fColor;
+            uniform vec4 lightPosition;
+            
+            varying vec3 L, N, V;
+            varying vec4 materialDiffuseF, materialSpecularF;
 
-            void main() {
+            attribute vec3 vTexCoord;
+            varying vec3 fTexCoord;
+
+            void main() {                
+                //Diffuse
+                //Calculate L
+                vec4 nm = vNormal;
+                nm.w = 1.0;     //To calculate the lighting vector, we need to convert the normal position
+                vec3 pos = (cameraMatrix * modelMatrix * nm).xyz;
+                L = normalize(lightPosition.xyz - pos);
+            
+                //Calculate N
+                //Here, we need to convert the normal direction (not the position)
+                N = normalize(cameraMatrix * modelMatrix * vNormal).xyz;
+            
+                //Specular
+                //V = origin - pos = -pos
+                V = normalize(-pos);
+
                 gl_Position = projectionMatrix * cameraMatrix * modelMatrix * vPosition;
-                fColor = vColor;
+                
+                materialDiffuseF = materialDiffuse;
+                materialSpecularF = materialSpecular;
+                fTexCoord = vTexCoord;
             }
         </script>
 
         <script id="fshader" type="x-shader/x-fragment">
             precision mediump float;
+            precision highp int;
 
-            varying vec4 fColor;
+            varying vec4 materialDiffuseF, materialSpecularF;
+
+            uniform vec4 lightDiffuse, lightSpecular, lightAmbient;
+            uniform float shininess;
+            
+            uniform int lightActive;
+
+            varying vec3 L, N, V;
+            varying vec3 fTexCoord;
+            
+            uniform sampler2D tex0;
 
             void main() {
-                    gl_FragColor = fColor;
+                vec4 materialDiffuse = materialDiffuseF;
+                if (fTexCoord[2] >= 0.0) {
+                    materialDiffuse = texture2D(tex0, fTexCoord.xy);
                 }
+
+                //Diffuse
+                //Id = Ld kd dot(l • n)
+                vec4 diffuse = lightDiffuse * materialDiffuse * dot(L, N);
+            
+                //Specular
+                //r = (2 (l · n ) n) - l
+                vec3 R = 2.0 * (dot(L, N) * N) - L;
+            
+                //Is = Ls Ks dot(V, R)^a
+                vec4 specular = lightSpecular * materialSpecularF * pow(max(dot(V, R), 0.0), shininess);
+            
+                //Ambient
+                //Ia = Laka
+                vec4 ambient = lightAmbient * materialDiffuse;
+            
+                vec4 fColor = ambient + ((specular + diffuse) * float(lightActive));
+                fColor.a = 1.0;
+            
+                gl_FragColor = fColor;
+            }
         </script>
 
         <script type="text/javascript" src="lib/webgl-utils.js"></script>
@@ -43,7 +106,7 @@
     <body onload="main()">
         <h1 id="mode">CS 4731 Final Project</h1>
 
-        <canvas id="webgl" class="box" width="600" height="600">
+        <canvas id="webgl" class="box" width="1300" height="700">
             Please use a browser that supports the "canvas" tag.
         </canvas>
     </body>

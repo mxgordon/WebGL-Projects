@@ -10,44 +10,134 @@ let bunny;
 
 let objs = [];
 
-let eye = vec3(0, 5, 10);
+let camR = 6;
+let camTheta = 0;
+let camStepDeg = 1;
+let camBobFact = 6;
+let camBobSize = 0.4;
+let camHeight = 3
+
+let eye = vec3(camR, camHeight, 0);
 let at = vec3(0, 0, 0);
 let up = vec3(0, 1, 0);
 
 let faces = [];
-let colors = [];
+let normals = [];
+let diffuseColors = [];
+let specularColors = [];
+let textureCoords = [];
+
+let materialShininess = 20;
 
 let modelTransform = scalem(1, 1, 1);
-let projectionMat = perspective(60, 1, 0.1, 40);
+let projectionMat = perspective(60, 13/7, 0.1, 20);
 let cameraViewMat = lookAt(eye, at, up);
 
 let lightLoc = vec4(0, 3, 0, 1);
-let lightActive = true;
+let lightAmbient = vec4(0.3, 0.3, 0.3, 1.0 );
+let lightDiffuse = vec4( 1.0, 1.0, 1.0, 1.0 );
+let lightSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
 
-function renderModel(model) {
+let lightActive = true;
+let animateCamera = false;
+
+function parseModelData(model) {
     console.log(model);
 
     for (let face of model.faces) {
-        let flen = face.faceVertices.length;
+        let fLen = face.faceVertices.length;
         faces.push(...face.faceVertices);
-        colors.push(...(new Array(flen)).fill(model.diffuseMap.get(face.material)));
+        normals.push(...face.faceNormals);
+        diffuseColors.push(...(new Array(fLen)).fill(model.diffuseMap.get(face.material)));
+        specularColors.push(...(new Array(fLen)).fill(model.specularMap.get(face.material)));
+        if (face.faceTexCoords.length > 0) {
+            textureCoords.push(...face.faceTexCoords.map(v => vec3(...v, 0)));
+        } else {
+            textureCoords.push(...(new Array(fLen)).fill(vec3(0, 0, -1)));
+        }
     }
 }
 
+function loadBuffers() {    
+    let pBuffer = gl.createBuffer();
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);  // load all the points from each subdivision into the buffer
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(faces), gl.STATIC_DRAW);
 
-function testPos(pnt) {
+    let vPosition = gl.getAttribLocation( program, "vPosition");
+    gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vPosition);  // link the buffer with the shader
+
+
+    let nBuffer = gl.createBuffer();
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);  // load all the points from each subdivision into the buffer
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(normals), gl.STATIC_DRAW);
+
+    let vNormal = gl.getAttribLocation( program, "vNormal");
+    gl.vertexAttribPointer(vNormal, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vNormal);  // link the buffer with the shader
+
+
+    let dBuffer = gl.createBuffer();
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, dBuffer);  // load all the points from each subdivision into the buffer
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(diffuseColors), gl.STATIC_DRAW);
+
+    let vDiffuse = gl.getAttribLocation( program, "materialDiffuse");
+    gl.vertexAttribPointer(vDiffuse, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vDiffuse);  // link the buffer with the shader
+
+    
+    let sBuffer = gl.createBuffer();
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, sBuffer);  // load all the points from each subdivision into the buffer
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(specularColors), gl.STATIC_DRAW);
+
+    let vSpecular = gl.getAttribLocation( program, "materialSpecular");
+    gl.vertexAttribPointer(vSpecular, 4, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vSpecular);  // link the buffer with the shader
+
+
+    let tBuffer = gl.createBuffer();
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, tBuffer);  // load all the points from each subdivision into the buffer
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(textureCoords), gl.STATIC_DRAW);
+
+    let vTextureCoords = gl.getAttribLocation( program, "vTexCoord");
+    gl.vertexAttribPointer(vTextureCoords, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vTextureCoords);  // link the buffer with the shader
+}
+
+
+function applyTransform(pnt) {
     let transPnt = mult(modelTransform, pnt); // Transform by model matrix
     let camPnt = mult(cameraViewMat, transPnt); // Transform by camera (view) matrix
     let perspectPnt = mult(projectionMat, camPnt); // Transform by projection matrix
-    
-    // Perform perspective divide to get NDC
-    let ndc = perspectPnt.map(v => (v / perspectPnt[3]));
+    return perspectPnt;
+}
 
-    // The next step would be to map from NDC to canvas coordinates,
-    // which typically involves scaling based on the viewport size and offset.
-    // This step is not shown here but is necessary for final canvas positioning.
+function drawNewFrame() {
+    if (animateCamera) {
+        stepCamera();
+    }
 
-    console.log(ndc); // This now logs NDC, which need further transformation for canvas coordinates
+    gl.uniform1i(gl.getUniformLocation(program, 'lightActive'), lightActive);
+
+	let cameraMatLoc = gl.getUniformLocation(program, 'cameraMatrix');
+	gl.uniformMatrix4fv(cameraMatLoc, false, flatten(cameraViewMat));
+
+    gl.drawArrays(gl.TRIANGLES, 0, faces.length);
+}
+
+function stepCamera() {
+    camTheta += camStepDeg;
+
+    let camThetaRad = camTheta * Math.PI / 180.;
+
+    eye = vec3(Math.cos(camThetaRad) * camR, camBobSize * Math.sin(camBobFact * camThetaRad) + camHeight, Math.sin(camThetaRad) * camR);
+
+    cameraViewMat = lookAt(eye, at, up);
 }
 
 function startPipeline() {
@@ -64,35 +154,47 @@ function startPipeline() {
 	let perspectiveMatLoc = gl.getUniformLocation(program, 'projectionMatrix');
 	gl.uniformMatrix4fv(perspectiveMatLoc, false, flatten(projectionMat));
 
+    
+	gl.uniform4fv(gl.getUniformLocation(program, 'lightDiffuse'), flatten(lightDiffuse));
+	gl.uniform4fv(gl.getUniformLocation(program, 'lightSpecular'), flatten(lightSpecular));
+	gl.uniform4fv(gl.getUniformLocation(program, 'lightAmbient'), flatten(lightAmbient));
+	gl.uniform4fv(gl.getUniformLocation(program, 'lightPosition'), flatten(lightLoc));
+
+	gl.uniform1f(gl.getUniformLocation(program, 'shininess'), materialShininess);
+	
+    gl.uniform1i(gl.getUniformLocation(program, 'lightActive'), lightActive);
+
     for (let obj of objs) {
-        renderModel(obj);
-        // break
+        parseModelData(obj);
     }
 
-    
-    let pBuffer = gl.createBuffer();
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);  // load all the points from each subdivision into the buffer
-    gl.bufferData(gl.ARRAY_BUFFER, flatten(faces), gl.STATIC_DRAW);
+    loadBuffers();
 
-    let vPosition = gl.getAttribLocation( program, "vPosition");
-    gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(vPosition);  // link the buffer with the shader
+    let frameRate = 30;
+
+    setInterval(drawNewFrame, 1000/frameRate);
+
+    console.log(diffuseColors, specularColors, faces, textureCoords);
+}
+
+function configureTexture(image) {
+    let tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    gl.texImage2D(
+        gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE,
+        image
+    );
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
 
-    let cBuffer = gl.createBuffer();
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);  // load all the points from each subdivision into the buffer
-    gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
-
-    let vColor = gl.getAttribLocation( program, "vColor");
-    gl.vertexAttribPointer(vColor, 4, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(vColor);  // link the buffer with the shader
-
-    gl.drawArrays(gl.TRIANGLES, 0, faces.length);
-
-    console.log(colors, faces);
-
+    gl.uniform1i(gl.getUniformLocation(program,"tex0"), 0);
 }
 
 function main() {
@@ -145,10 +247,16 @@ function main() {
         "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/bunny.obj",
         "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/bunny.mtl");
 
+    
+    // Set Keyboard callbacks
+    document.addEventListener("keydown", (evt => evt.key === "l" ? lightActive = !lightActive : null));
+    document.addEventListener("keydown", (evt => evt.key === "c" ? animateCamera = !animateCamera : null));
+
     // Wait for obj and texture loading to finish before running the rest of the program
     let intCallbk = setInterval(() => {
         if (stopSign.readyState && lamp.readyState && car.readyState && street.readyState && bunny.readyState) {
             clearInterval(intCallbk);
+            configureTexture(stopSign.image);
             objs = [lamp, stopSign, car, bunny, street];
             startPipeline();
         }
