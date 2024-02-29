@@ -14,15 +14,21 @@ class Model {
 
     faces = [];                 // The faces that make up the model (array of Face objects)
 
+    children;              // Children in the hierarchy
+    transform;             // Hierarchal transform
+
     diffuseMap = new Map();     // A map of material name to corresponding diffuse color
     specularMap = new Map();    // A map of material name to corresponding specular color
 
-    constructor(objPath, mtlPath) {
+    constructor(objPath, mtlPath, transform, children=[]) {
         // Load and parse the OBJ file
         this.loadFile(objPath, this.parseObjFile.bind(this));   // Binding necessary to keep object scope (see [2])
 
         // Load and parse the MTL file
         this.loadFile(mtlPath, this.parseMtlFile.bind(this));   // Binding necessary to keep object scope (see [2])
+        
+        this.transform = transform;
+        this.children = children;
     }
 
     /**

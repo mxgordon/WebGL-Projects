@@ -8,6 +8,11 @@
             precision highp int;
 
             attribute vec4 vPosition, materialDiffuse, materialSpecular, vNormal;
+
+            attribute vec4 shadowPos;
+            uniform int isShadow;
+
+            uniform int isSkybox;
             
             uniform vec4 lightDiffuse, lightSpecular, lightAmbient;
             
@@ -25,7 +30,18 @@
             attribute vec3 vTexCoord;
             varying vec3 fTexCoord;
 
-            void main() {                
+            void main() {   
+                if (isShadow == 1) {
+                    gl_Position = projectionMatrix * cameraMatrix * shadowPos;
+                    return;
+                }
+
+                if (isSkybox == 1) {
+                    gl_Position = projectionMatrix * cameraMatrix * modelMatrix * vPosition;
+                    fTexCoord = vPosition.xyz;
+                    return;
+                }
+                
                 //Diffuse
                 //Calculate L
                 vec4 nm = vNormal;
@@ -64,8 +80,23 @@
             varying vec3 fTexCoord;
             
             uniform sampler2D tex0;
+            uniform samplerCube skyCubeMap;
+            //uniform int 
+
+            uniform int isShadow;
+            uniform int isSkybox;
 
             void main() {
+                if (isShadow == 1) {
+                    gl_FragColor = vec4(0.1, 0.1, 0.1, 1);
+                    return;
+                }
+
+                if (isSkybox == 1) {
+                    gl_FragColor = textureCube(skyCubeMap, normalize(fTexCoord));
+                    return;
+                }
+
                 vec4 materialDiffuse = materialDiffuseF;
                 if (fTexCoord[2] >= 0.0) {
                     materialDiffuse = texture2D(tex0, fTexCoord.xy);

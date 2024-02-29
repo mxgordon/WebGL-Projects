@@ -9,6 +9,15 @@
 //  Helper functions
 //
 
+function shadowProjectionMatY(lightHeight) {
+    return mat4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, -1/lightHeight, 0, 0
+    );
+}
+
 function _argumentsToArray( args )
 {
     return [].concat.apply( [], Array.prototype.slice.apply(args) );
