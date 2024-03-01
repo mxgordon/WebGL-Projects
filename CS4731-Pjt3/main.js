@@ -42,10 +42,10 @@ let modelTransform = scalem(1, 1, 1);
 let projectionMat = perspective(60, 13/7, 0.1, 200);
 let cameraViewMat = lookAt(eye, at, up);
 
-let lightLoc = vec4(0, 3, 0, 1);
+let lightLoc = vec4(0.1, 5, 0.1, 1);
 let lightAmbient = vec4(0.3, 0.3, 0.3, 1.0 );
-let lightDiffuse = vec4( 1.0, 1.0, 1.0, 1.0 );
-let lightSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
+let lightDiffuse = vec4( 0.8, 0.8, 0.8, 1.0 );
+let lightSpecular = vec4( 1.5, 1.5, 1.5, 1.0 );
 
 let skybox = {length:0, start:0};
 
@@ -54,8 +54,11 @@ let animateCamera = false;
 let isMoving = false;
 let castShadows = true;
 let showSkybox = true;
+let camFollow = false;
+let carHasReflection = true;
+let bunnyHasRefraction = true;
 
-function chaikinCornerCut(loop, ratio=.25) {
+function chaikinCornerCut(loop, ratio=.25) {  // Use Chaikin's corner cutting algorithm to round any loop
     let newPoints = [];
 
     for (let i = 0; i < loop.length; i++) {
@@ -73,14 +76,14 @@ function chaikinCornerCut(loop, ratio=.25) {
     return newPoints;
 }
 
-function generateShadow(model) {
+function generateShadow(model) {  // Use a shadow projection matrix to project any face onto the y=0 plane
     let shadowPoints = [];
-    let projMat = shadowProjectionMatY(lightLoc[1]);
+    let projMat = shadowProjectionMatY(lightLoc[1]);  // build the projection matrix
     let sourceTrans = translate(...lightLoc);
     let origTrans = translate(...negate(lightLoc));
     let shadowProjectTransform = mult(mult(sourceTrans, projMat), origTrans);
 
-    for (let i = model.start; i < (model.start + model.length); i++) {
+    for (let i = model.start; i < (model.start + model.length); i++) {  // iteratively project each face
         let transPoint = mult(model.transform, faces[i]);
         let sPoint = mult(shadowProjectTransform, transPoint);
         
@@ -93,49 +96,55 @@ function generateShadow(model) {
 function parseModelData(model, start=0) {
     for (let face of model.faces) {
         let fLen = face.faceVertices.length;
-        faces.push(...face.faceVertices);
+        faces.push(...face.faceVertices);  // Push all the model data onto the global array 
         normals.push(...face.faceNormals);
         diffuseColors.push(...(new Array(fLen)).fill(model.diffuseMap.get(face.material)));
         specularColors.push(...(new Array(fLen)).fill(model.specularMap.get(face.material)));
-        if (face.faceTexCoords.length > 0) {
+        if (face.faceTexCoords.length > 0) {  // generate 3D texture coordinates to support cube textures
             textureCoords.push(...face.faceTexCoords.map(v => vec3(...v, 0)));
         } else {
             textureCoords.push(...(new Array(fLen)).fill(vec3(0, 0, -1)));
         }
     }
-
+    // Store information about the length and starting index of the model
     model.start = start;
     model.length = faces.length - start;
     
-    for (let m of model.children) {
+    for (let m of model.children) {  // recursively continue
         parseModelData(m, faces.length);
     }
 }
 
 function renderModels(model, transform) {
-    let currentTransform = mult(transform, model.transform)
+    let currentTransform = mult(transform, model.transform);  // Load model matrix into GPU
+	gl.uniformMatrix4fv(gl.getUniformLocation(program, 'modelMatrix'), false, flatten(currentTransform));
 
-	let modelMatLoc = gl.getUniformLocation(program, 'modelMatrix');
-	gl.uniformMatrix4fv(modelMatLoc, false, flatten(currentTransform));
-
+    // Set reflect and refraction variables
+    gl.uniform1i(gl.getUniformLocation(program, 'isCarReflection'), model.hasReflection);
+    gl.uniform1i(gl.getUniformLocation(program, 'isBunnyRefraction'), model.hasRefraction);
+    
+    // Draw the faces of the model
     gl.drawArrays(gl.TRIANGLES, model.start, model.length);
 
-    for (let m of model.children) {
+    gl.uniform1i(gl.getUniformLocation(program, 'isCarReflection'), false);
+    gl.uniform1i(gl.getUniformLocation(program, 'isBunnyRefraction'), false);
+
+    for (let m of model.children) {  // Recursively continue
         renderModels(m, currentTransform);
     }
 }
 
 function renderSkybox() {
-	let modelMatLoc = gl.getUniformLocation(program, 'modelMatrix');
-	gl.uniformMatrix4fv(modelMatLoc, false, flatten(translate(0, 0, 0)));
+    // Load model matrix for the skybox
+	gl.uniformMatrix4fv(gl.getUniformLocation(program, 'modelMatrix'), false, flatten(translate(0, 0, 0)));
 
     gl.uniform1i(gl.getUniformLocation(program, 'isSkybox'), true);
-    gl.drawArrays(gl.TRIANGLES, skybox.start, skybox.length);
+    gl.drawArrays(gl.TRIANGLES, skybox.start, skybox.length);  // Draw faces with uniform variable set
     gl.uniform1i(gl.getUniformLocation(program, 'isSkybox'), false);
 }
 
 function makeSkybox() {
-    let vertices = [
+    let vertices = [  // Vertices of the skybox
         vec4(100, 100, 100, 1),
         vec4(100, -100, 100, 1),
         vec4(-100, -100, 100, 1),
@@ -146,7 +155,7 @@ function makeSkybox() {
         vec4(-100, 100, -100, 1),
     ] 
 
-    let cFaces = [
+    let cFaces = [  // Indices for each face
         [0, 1, 2, 3], // +Z
         [4, 5, 6, 7], // -Z
         [0, 4, 5, 1], // +X
@@ -157,7 +166,7 @@ function makeSkybox() {
 
     let tris = [];
 
-    for (let [a, b, c, d] of cFaces) {
+    for (let [a, b, c, d] of cFaces) {  // Iteratively triangulate each quad
         tris.push(
             vertices[a],
             vertices[b],
@@ -170,8 +179,6 @@ function makeSkybox() {
         )
     }
 
-    let norms = tris;
-
     let diffColors = Array(tris.length).fill(vec4(0,0,0,1));
     let specColors = Array(tris.length).fill(vec4(0,0,0,1));
 
@@ -180,8 +187,8 @@ function makeSkybox() {
     skybox.length = tris.length;
     skybox.start = faces.length;
 
-    faces.push(...tris);
-    normals.push(...norms);
+    faces.push(...tris);  // Push all the data for the skybox to the global arrays
+    normals.push(...tris);
     diffuseColors.push(...diffColors);
     specularColors.push(...specColors);
     textureCoords.push(...texCoords);
@@ -190,7 +197,7 @@ function makeSkybox() {
 function loadBuffers() {    
     let pBuffer = gl.createBuffer();
     
-    gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);  // load all the points from each subdivision into the buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer);  // load all the points into the buffer
     gl.bufferData(gl.ARRAY_BUFFER, flatten(faces), gl.STATIC_DRAW);
 
     let vPosition = gl.getAttribLocation( program, "vPosition");
@@ -200,7 +207,7 @@ function loadBuffers() {
 
     let nBuffer = gl.createBuffer();
     
-    gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);  // load all the points from each subdivision into the buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);  // load all the normals into the buffer
     gl.bufferData(gl.ARRAY_BUFFER, flatten(normals), gl.STATIC_DRAW);
 
     let vNormal = gl.getAttribLocation( program, "vNormal");
@@ -210,7 +217,7 @@ function loadBuffers() {
 
     let dBuffer = gl.createBuffer();
     
-    gl.bindBuffer(gl.ARRAY_BUFFER, dBuffer);  // load all the points from each subdivision into the buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, dBuffer);  // load all the diffuse colors into the buffer
     gl.bufferData(gl.ARRAY_BUFFER, flatten(diffuseColors), gl.STATIC_DRAW);
 
     let vDiffuse = gl.getAttribLocation( program, "materialDiffuse");
@@ -220,7 +227,7 @@ function loadBuffers() {
     
     let sBuffer = gl.createBuffer();
     
-    gl.bindBuffer(gl.ARRAY_BUFFER, sBuffer);  // load all the points from each subdivision into the buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, sBuffer);  // load all the specular colors into the buffer
     gl.bufferData(gl.ARRAY_BUFFER, flatten(specularColors), gl.STATIC_DRAW);
 
     let vSpecular = gl.getAttribLocation( program, "materialSpecular");
@@ -230,7 +237,7 @@ function loadBuffers() {
 
     let tBuffer = gl.createBuffer();
     
-    gl.bindBuffer(gl.ARRAY_BUFFER, tBuffer);  // load all the points from each subdivision into the buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, tBuffer);  // load all the texture coordinates into the buffer
     gl.bufferData(gl.ARRAY_BUFFER, flatten(textureCoords), gl.STATIC_DRAW);
 
     let vTextureCoords = gl.getAttribLocation( program, "vTexCoord");
@@ -238,39 +245,49 @@ function loadBuffers() {
     gl.enableVertexAttribArray(vTextureCoords);  // link the buffer with the shader
 }
 
-function applyTransform(pnt) {
-    let transPnt = mult(modelTransform, pnt); // Transform by model matrix
-    let camPnt = mult(cameraViewMat, transPnt); // Transform by camera (view) matrix
-    let perspectPnt = mult(projectionMat, camPnt); // Transform by projection matrix
-    return perspectPnt;
+function camFollowCar() {
+    let carTrans = street.children[0].transform;  // Get transform of the car
+    let bunnyTrans = mult(carTrans, street.children[0].children[0].transform);  // get Transform of the bunny
+    let followAt = mult(bunnyTrans, vec4(...at, 1));  // Generate the focus of the camera
+    let followEye = mult(carTrans, vec4(.5, 1, .9, 1));  // Generate the eye location of the camera
+
+    followAt[1] += 0.3;  // Raise the focus by 0.3 units
+
+    cameraViewMat = lookAt(vec3(...followEye), vec3(...followAt), up);  // Generate the camera matrix
 }
 
 function drawNewFrame() {
-    gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    if (animateCamera) {
-        stepCamera();
-    }
-
-    gl.uniform1i(gl.getUniformLocation(program, 'lightActive'), lightActive);
+    gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);    
     
-	let cameraMatLoc = gl.getUniformLocation(program, 'cameraMatrix');
-	gl.uniformMatrix4fv(cameraMatLoc, false, flatten(cameraViewMat));
-    
-    if (isMoving) {
+    if (isMoving) {  // Move car if toggled
         stepAlongPath(street.children[0]);
     }
+
+    if (camFollow) {  // Lock camera to car if toggled
+        camFollowCar();
+    } else if (animateCamera) {  // Bob the camera around if toggled
+        stepCamera();
+    } else {
+        cameraViewMat = lookAt(eye, at, up);  // Reset camera position to last "bob" point
+    }
+
+    street.children[0].hasReflection = carHasReflection;  // Set reflect and refraction variables
+    street.children[0].children[0].hasRefraction = bunnyHasRefraction;
+
+    gl.uniform1i(gl.getUniformLocation(program, 'lightActive'), lightActive);  // Set whether to include lighting
     
-    if (castShadows && lightActive) {
+	gl.uniformMatrix4fv(gl.getUniformLocation(program, 'cameraMatrix'), false, flatten(cameraViewMat));   // Load camera matrix to GPU
+    
+    if (castShadows && lightActive) {  // Calculate shadows and load them on a different buffer if so
         gl.uniform1i(gl.getUniformLocation(program, 'isShadow'), true);
 
-        let shadows = generateShadow(street.children[0]);
+        let shadows = generateShadow(street.children[0]);  // Generate shadows for the car and stop sign
         shadows.push(...generateShadow(street.children[2]));
         shadows.push(...(new Array(faces.length - shadows.length)).fill(vec4(0, 0, 0, 0)));  // Shadow buffer hotfix
         
         let shadBuffer = gl.createBuffer();
         
-        gl.bindBuffer(gl.ARRAY_BUFFER, shadBuffer);  // load all the points from each subdivision into the buffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, shadBuffer);  // load all the points from the shadows into the buffer
         gl.bufferData(gl.ARRAY_BUFFER, flatten(shadows), gl.DYNAMIC_DRAW);
         
         let shadowPos = gl.getAttribLocation( program, "shadowPos");
@@ -282,25 +299,26 @@ function drawNewFrame() {
         gl.uniform1i(gl.getUniformLocation(program, 'isShadow'), false);
     }
 
-    renderModels(street, modelTransform);
+    renderModels(street, modelTransform);  // Render all the models recursively
 
     if (showSkybox) {
-        renderSkybox();
+        renderSkybox();  // Render the skybox if toggled
     }
 }
 
 function stepCamera() {
-    camTheta += camStepDeg;
+    camTheta += camStepDeg;  // Rotate the camera around the origin
 
-    let camThetaRad = camTheta * Math.PI / 180.;
+    let camThetaRad = camTheta * Math.PI / 180.;  // Convert to radians
 
+    // Calculate the new position
     eye = vec3(Math.cos(camThetaRad) * camR, camBobSize * Math.sin(camBobFact * camThetaRad) + camHeight, Math.sin(camThetaRad) * camR);
 
-    cameraViewMat = lookAt(eye, at, up);
+    cameraViewMat = lookAt(eye, at, up);  // Generate new camera matrix
 }
 
 function stepAlongPath(model) {
-    let stepSize = 0.05;
+    let stepSize = 0.08;
 
     let backPoint = carPath[activeLine];  // find the endpoints of the path its on
     let nextPoint = carPath[(activeLine + 1) % carPath.length];
@@ -326,15 +344,12 @@ function stepAlongPath(model) {
     model.transform = mult(translate(...newPos), rotation);  // generate the new transformation matrix
 }
 
-function startPipeline() {
-	let cameraMatLoc = gl.getUniformLocation(program, 'cameraMatrix');
-	gl.uniformMatrix4fv(cameraMatLoc, false, flatten(cameraViewMat));
+function startPipeline() {  // Load all the initial values for uniform variables here
+	gl.uniformMatrix4fv(gl.getUniformLocation(program, 'cameraMatrix'), false, flatten(cameraViewMat));
 
-	let modelMatLoc = gl.getUniformLocation(program, 'modelMatrix');
-	gl.uniformMatrix4fv(modelMatLoc, false, flatten(modelTransform));
+	gl.uniformMatrix4fv(gl.getUniformLocation(program, 'modelMatrix'), false, flatten(modelTransform));
 
-	let perspectiveMatLoc = gl.getUniformLocation(program, 'projectionMatrix');
-	gl.uniformMatrix4fv(perspectiveMatLoc, false, flatten(projectionMat));
+	gl.uniformMatrix4fv(gl.getUniformLocation(program, 'projectionMatrix'), false, flatten(projectionMat));
 
 	gl.uniform4fv(gl.getUniformLocation(program, 'lightDiffuse'), flatten(lightDiffuse));
 	gl.uniform4fv(gl.getUniformLocation(program, 'lightSpecular'), flatten(lightSpecular));
@@ -342,30 +357,31 @@ function startPipeline() {
 	gl.uniform4fv(gl.getUniformLocation(program, 'lightPosition'), flatten(lightLoc));
     gl.uniform1i(gl.getUniformLocation(program, 'isShadow'), false);
     gl.uniform1i(gl.getUniformLocation(program, 'isSkybox'), false);
+    gl.uniform1i(gl.getUniformLocation(program, 'isCarReflection'), false);
 
 	gl.uniform1f(gl.getUniformLocation(program, 'shininess'), materialShininess);
 	
     gl.uniform1i(gl.getUniformLocation(program, 'lightActive'), lightActive);
 
-    parseModelData(street);
-    makeSkybox();
+    parseModelData(street);  // Parse the models into the arrays
+    makeSkybox();  // Generate the skybox
 
-    loadBuffers();
+    loadBuffers();   // Load arrays into GPU
 
     let frameRate = 30;
 
-    setInterval(drawNewFrame, 1000/frameRate);
+    setInterval(drawNewFrame, 1000/frameRate);  // Set render call at 30 FPS
 }
 
 function configureTexture(image) {
-    let tex = gl.createTexture();
+    let tex = gl.createTexture();  // Create texture object and bind to 0th texture slot
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, tex);
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    gl.texImage2D(
+    gl.texImage2D(  // Load image into slot
         gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE,
         image
     );
@@ -373,16 +389,16 @@ function configureTexture(image) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    gl.uniform1i(gl.getUniformLocation(program,"tex0"), 0);
+    gl.uniform1i(gl.getUniformLocation(program,"tex0"), 0);  // Set uniform variable to texture sampler
 }
 
 function configureCubeTexture(faces) {
-    let cubeTexture = gl.createTexture();
+    let cubeTexture = gl.createTexture(); // Create texture object and bind to 1st texture slot
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture);
     gl.uniform1i(gl.getUniformLocation(program, "skyCubeMap"), 1);
 
-    faces.forEach((face) => {
+    faces.forEach((face) => {  // Load each texture for the cube into its respective position
         const { target, img } = face;
         gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
     });
@@ -391,7 +407,6 @@ function configureCubeTexture(faces) {
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    // gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
 }
 
 function main() {
@@ -458,9 +473,12 @@ function main() {
     document.addEventListener("keydown", (evt => evt.key === "m" ? isMoving = !isMoving : null));
     document.addEventListener("keydown", (evt => evt.key === "s" ? castShadows = !castShadows : null));
     document.addEventListener("keydown", (evt => evt.key === "e" ? showSkybox = !showSkybox : null));
+    document.addEventListener("keydown", (evt => evt.key === "d" ? camFollow = !camFollow : null));
+    document.addEventListener("keydown", (evt => evt.key === "r" ? carHasReflection = !carHasReflection : null));
+    document.addEventListener("keydown", (evt => evt.key === "f" ? bunnyHasRefraction = !bunnyHasRefraction : null));
 
     // Make the path round
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
         carPath = chaikinCornerCut(carPath);
     }
 
@@ -476,7 +494,7 @@ function main() {
 
     let faceLoadCount = 0;
 
-    for (let face of faces) {
+    for (let face of faces) {  // Start loaders for all skycube textures
         face.img = new Image();
         face.img.crossOrigin = "";
         face.img.src = "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/skybox_" + face.imgName + ".png";

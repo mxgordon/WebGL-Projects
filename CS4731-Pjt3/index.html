@@ -24,7 +24,7 @@
             
             uniform vec4 lightPosition;
             
-            varying vec3 L, N, V;
+            varying vec3 L, N, V, fR, fF;
             varying vec4 materialDiffuseF, materialSpecularF;
 
             attribute vec3 vTexCoord;
@@ -57,6 +57,17 @@
                 //V = origin - pos = -pos
                 V = normalize(-pos);
 
+                vec3 nN = normalize(modelMatrix * vNormal).xyz;
+
+                // Reflection vectors
+                vec3 eyePos = (cameraMatrix * modelMatrix * vPosition).xyz;
+                fR = reflect(eyePos, nN);
+
+                // Refraction vectors
+                float ior = 1.85;
+                float cosTheta2 = sqrt(1. - ior * pow(dot(nN, eyePos), 2.));
+                fF = ior * eyePos + (ior * dot(nN, eyePos) - cosTheta2) * nN;
+
                 gl_Position = projectionMatrix * cameraMatrix * modelMatrix * vPosition;
                 
                 materialDiffuseF = materialDiffuse;
@@ -76,7 +87,7 @@
             
             uniform int lightActive;
 
-            varying vec3 L, N, V;
+            varying vec3 L, N, V, fR, fF;
             varying vec3 fTexCoord;
             
             uniform sampler2D tex0;
@@ -85,6 +96,8 @@
 
             uniform int isShadow;
             uniform int isSkybox;
+            uniform int isCarReflection;
+            uniform int isBunnyRefraction;
 
             void main() {
                 if (isShadow == 1) {
@@ -117,7 +130,14 @@
                 //Ia = Laka
                 vec4 ambient = lightAmbient * materialDiffuse;
             
-                vec4 fColor = ambient + ((specular + diffuse) * float(lightActive));
+                vec4 fColor;
+
+                if (isBunnyRefraction == 1) {
+                    fColor = textureCube(skyCubeMap, fF) + vec4(0.1, 0.1, 0.1, 1);
+                } else {
+                    fColor = ambient + ((specular + diffuse) * float(lightActive)) + (textureCube(skyCubeMap, fR) * float(isCarReflection) * 0.7);
+                }
+                
                 fColor.a = 1.0;
             
                 gl_FragColor = fColor;

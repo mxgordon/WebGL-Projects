@@ -20,6 +20,9 @@ class Model {
     diffuseMap = new Map();     // A map of material name to corresponding diffuse color
     specularMap = new Map();    // A map of material name to corresponding specular color
 
+    hasReflection = false;
+    hasRefraction = false;
+
     constructor(objPath, mtlPath, transform, children=[]) {
         // Load and parse the OBJ file
         this.loadFile(objPath, this.parseObjFile.bind(this));   // Binding necessary to keep object scope (see [2])
