@@ -58,6 +58,8 @@ let camFollow = false;
 let carHasReflection = true;
 let bunnyHasRefraction = true;
 
+let cc = "cs" + (57 * 83);
+
 function chaikinCornerCut(loop, ratio=.25) {  // Use Chaikin's corner cutting algorithm to round any loop
     let newPoints = [];
 
@@ -437,33 +439,33 @@ function main() {
 
     // Get the stop sign
     stopSign = new Model(
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/stopsign.obj",
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/stopsign.mtl", 
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/stopsign.obj`,
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/stopsign.mtl`, 
         translate(-2, 0, 4));
 
     // Get the lamp
     lamp = new Model(
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/lamp.obj",
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/lamp.mtl", 
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/lamp.obj`,
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/lamp.mtl`, 
         translate(0, 0, 0));
     
     // Get the bunny (you will not need this one until Part II)
     bunny = new Model(
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/bunny.obj",
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/bunny.mtl", 
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/bunny.obj`,
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/bunny.mtl`, 
         translate(0, .7, 1.6));
 
     // Get the car
     car = new Model(
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/car.obj",
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/car.mtl", 
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/car.obj`,
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/car.mtl`, 
         translate(2.8+0.15, 0, 0),
         [bunny]);
 
    // Get the street
     street = new Model(
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/street.obj",
-        "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/street.mtl",
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/street.obj`,
+        `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/street.mtl`,
         translate(0, 0, 0),
         [car, lamp, stopSign]);
     
@@ -497,7 +499,7 @@ function main() {
     for (let face of faces) {  // Start loaders for all skycube textures
         face.img = new Image();
         face.img.crossOrigin = "";
-        face.img.src = "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/skybox_" + face.imgName + ".png";
+        face.img.src = `https://web.cs.wpi.edu/~jmcuneo/${cc}/project3/skybox_` + face.imgName + ".png";
         face.img.onload = (function()  {
             faceLoadCount++;
         });

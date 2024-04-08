@@ -327,7 +327,7 @@ function toggleSubdiv(key) {
 }
 
 function toggleTrackSubdiv(key) {
-    if (key === "j" && activeTrackSubdiv > 0) {  // if q is pressed, unsubdivide cube
+    if (key === "j" && activeTrackSubdiv > 0) {  // if q is pressed, unsubdivide track
         activeTrackSubdiv--;
 
         activeLine = activeLine / 2 + 0.25 + (lineDistance * .5);  // adjust the new active line and line distance values
@@ -336,7 +336,7 @@ function toggleTrackSubdiv(key) {
         
         stepCubeForward(true);  // regenerate cube position
         
-    } else if (key === "i" && activeTrackSubdiv < (trackSubdiv.length - 1)) {  // if e is pressed, subdivide cube
+    } else if (key === "i" && activeTrackSubdiv < (trackSubdiv.length - 1)) {  // if e is pressed, subdivide track
         activeTrackSubdiv++;
         
         let adjust = Math.floor(lineDistance * 2 - 0.5)   // adjust the new active line and line distance values

@@ -109,7 +109,7 @@ class Model {
 
                 // Get the path of the texture file
                 // Note that any model will have at most one texture file
-                this.imagePath = "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/" + line.substring(line.indexOf(' ') + 1);
+                this.imagePath = `https://web.cs.wpi.edu/~jmcuneo/cs${57 * 83}/project3/` + line.substring(line.indexOf(' ') + 1);
 
                 this.image = new Image();
                 this.image.crossOrigin = "";
