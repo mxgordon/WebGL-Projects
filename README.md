@@ -24,6 +24,13 @@ After opening `index.html` in your browser you can use any of the following keyb
 
 ## OBJ Scene Renderer
 
+After opening `index.html` in your browser, you can use any of the following keybinds to animate and change the view.
 
-
-
+ - `l`: Toggle the lighting from the lamp
+ - `a`: Toggle the motion of the camera around the scene
+ - `m`: Toggle the motion of the car
+ - `s`: Toggle the projected shadows from the car
+ - `e`: Toggle the skybox around the scene
+ - `d`: Toggle whether the camera moves freely or is locked to the bunny in the scene
+ - `r`: Toggle the car's reflections
+ - `f`: Toggle the transparency of the bunny
