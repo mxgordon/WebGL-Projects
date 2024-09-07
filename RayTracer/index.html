@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Ray Tracing: Four Spheres</title>
+
+
+    <script id="vshader" type="x-shader/x-vertex">
+        attribute vec3 aPosition;
+        attribute vec3 aColor;
+        varying vec3 vPosition;
+        varying vec3 bgColor;
+        void main() {
+            gl_Position = vec4(aPosition, 1.0);
+            vPosition = aPosition;
+            bgColor = aColor;
+        }
+    </script>
+
+    <script id="fshader" type="x-shader/x-fragment">
+        #define MAX_ITER 3
+
+        precision mediump float;
+        varying vec3 vPosition;
+        varying vec3 bgColor;
+        uniform int sceneNumber;
+
+        // define structs
+        struct Sphere {
+            vec3 center;
+            float radius;
+            vec3 color;
+            float shininess;
+            int reflections;
+        };
+
+        struct Ray {
+            vec3 origin;
+            vec3 direction;
+        };
+
+        struct Light {
+            vec3 position;
+            float ambience;
+            vec3 specular;
+            vec3 diffuse;
+        };
+
+        struct Triangle {
+            vec3 p1;
+            vec3 p2;
+            vec3 p3;
+            vec3 color;
+            float shininess;
+        };
+
+        struct RayTracerOutput {
+            Ray reflectedRay;
+            vec3 color;
+        };
+
+        Sphere spheres[4];
+        Triangle triangles[12];
+        Ray rays[1];
+        Light light[1];
+        int sphereCount = 0;
+
+        // Initialize method for all of the different scenes
+        void init() {
+            // Initialize ray from pixel
+            float x = vPosition.x;
+            float y = vPosition.y;
+            float z = vPosition.z;
+            float focalLength = 2.0;
+            vec3 color = vec3(0.0, 0.0, 0.0);
+
+
+            // Create ray struct
+            rays[0].origin = vec3(0.0, 0.0, focalLength);
+            rays[0].direction = normalize(vec3(x, y, -focalLength));
+
+        }
+
+
+        void scene3() {
+            // Create spheres
+            spheres[0].center = vec3(-0.4, -0.7, -0.8);
+            spheres[0].radius = 0.3;
+            spheres[0].color = vec3(0.0, 0.0, 0.0);
+            spheres[0].shininess = 20.0;
+
+            spheres[1].center = vec3(0.4, -0.7, -0.4);
+            spheres[1].radius = 0.3;
+            spheres[1].color = vec3(0.0, 2.0, 0.0);
+            spheres[1].shininess = 4.0;
+            spheres[1].reflections = 1;
+
+            float backLine = -2.0;
+            float sideLine = 1.0;
+            float height = -1.0;
+
+            // Create cube
+            triangles[0] = Triangle(vec3(sideLine, height, backLine), vec3(sideLine, height, -backLine), vec3(-sideLine, height, backLine), vec3(0.0, 0.0, 1.0), 20.0);
+            triangles[1] = Triangle(vec3(-sideLine, height, backLine),  vec3(sideLine, height, -backLine), vec3(-sideLine, height, -backLine), vec3(0.0, 0.0, 1.0), 20.0);
+            triangles[2] = Triangle(vec3(-sideLine, height, backLine), vec3(-sideLine, height, -backLine), vec3(-sideLine, -height, -backLine), vec3(0.0, 1.0, 1.0), 20.0);
+            triangles[3] = Triangle(vec3(-sideLine, height, backLine),  vec3(-sideLine, -height, -backLine), vec3(-sideLine, -height, backLine), vec3(0.0, 1.0, 1.0), 20.0);
+            triangles[4] = Triangle(vec3(sideLine, -height, backLine), vec3(-sideLine, -height, backLine), vec3(sideLine, -height, -backLine), vec3(1.0, 0.0, 1.0), 20.0);
+            triangles[5] = Triangle(vec3(-sideLine, -height, backLine), vec3(-sideLine, -height, -backLine), vec3(sideLine, -height, -backLine), vec3(1.0, 0.0, 1.0), 20.0);
+            triangles[6] = Triangle(vec3(sideLine, height, backLine), vec3(sideLine, -height, -backLine), vec3(sideLine, height, -backLine), vec3(0.0, 1.0, 0.0), 20.0);
+            triangles[7] = Triangle(vec3(sideLine, height, backLine), vec3(sideLine, -height, backLine), vec3(sideLine, -height, -backLine), vec3(0.0, 1.0, 0.0), 20.0);
+            triangles[8] = Triangle(vec3(-sideLine, -height, backLine), vec3(sideLine, -height, backLine), vec3(sideLine, height, backLine), vec3(1.0, 1.0, 0.0), 20.0);
+            triangles[9] = Triangle(vec3(-sideLine, height, backLine), vec3(-sideLine, -height, backLine), vec3(sideLine, height, backLine), vec3(1.0, 1.0, 0.0), 20.0);
+            triangles[8] = Triangle(vec3(-sideLine, -height, backLine), vec3(sideLine, -height, backLine), vec3(sideLine, height, backLine), vec3(1.0, 1.0, 0.0), 20.0);
+            triangles[9] = Triangle(vec3(-sideLine, height, backLine), vec3(-sideLine, -height, backLine), vec3(sideLine, height, backLine), vec3(1.0, 1.0, 0.0), 20.0);
+            triangles[10] = Triangle(vec3(-sideLine, -height, -backLine), vec3(sideLine, height, -backLine), vec3(sideLine, -height, -backLine), vec3(1.0, 1.0, 1.0), 20.0);
+            triangles[11] = Triangle(vec3(-sideLine, height, -backLine), vec3(sideLine, height, -backLine), vec3(-sideLine, -height, -backLine), vec3(1.0, 1.0, 1.0), 20.0);
+
+            // Create Light source
+            light[0].position = vec3(0.01, 0.01, 0.01);
+            light[0].ambience = .1;
+            light[0].specular = vec3(0.7, 0.7, 0.7);
+            light[0].diffuse = vec3(0.6, 0.6, 0.6);
+        }
+
+        void scene2() {
+            // Create spheres
+            spheres[0].center = vec3(-0.5, 0.5, 0.0);
+            spheres[0].radius = 0.3;
+            spheres[0].color = vec3(1.0, 1.0, 0.0);
+            spheres[0].shininess = 20.0;
+
+            spheres[1].center = vec3(0.5, 0.5, 0.0);
+            spheres[1].radius = 0.3;
+            spheres[1].color = vec3(0.0, 1.0, 0.0);
+            spheres[1].shininess = 20.0;
+
+            spheres[2].center = vec3(-0.5, -0.5, 0.0);
+            spheres[2].radius = 0.3;
+            spheres[2].color = vec3(1.0, 0.0, 0.0);
+            spheres[2].shininess = 20.0;
+
+            spheres[3].center = vec3(0.5, -0.5, 0.0);
+            spheres[3].radius = 0.3;
+            spheres[3].color = vec3(0.0, 0.0, 1.0);
+            spheres[3].shininess = 20.0;
+
+            sphereCount = 4;
+
+            // Create Light source
+            light[0].position = vec3(0.0, 0.0, 1.0);
+            light[0].ambience = .2;
+            light[0].specular = vec3(0.7, 0.7, 0.7);
+            light[0].diffuse = vec3(0.9, 0.9, 0.9);
+        }
+
+        void scene1() {
+            // Create spheres
+            spheres[0].center = vec3(-0.4, -0.2, -0.5);
+            spheres[0].radius = 0.3;
+            spheres[0].color = vec3(1.0, 0, 0.0);
+            spheres[0].shininess = 20.0;
+
+            spheres[1].center = vec3(0.2, -0.2, -0.8);
+            spheres[1].radius = 0.3;
+            spheres[1].color = vec3(0.0, 1.0, 0.0);
+            spheres[1].shininess = 4.0;
+
+            float backLine = -10.0;
+            float sideLine = 10.0;
+            float height = -.5;
+
+            // Create plane that the sphere sit on
+            triangles[0] = Triangle(vec3(sideLine, height, backLine), vec3(sideLine, height, -backLine), vec3(-sideLine, height, backLine), vec3(0.0, 0.0, 1.0), 20.0);
+            triangles[1] = Triangle(vec3(-sideLine, height, backLine),  vec3(sideLine, height, -backLine), vec3(-sideLine, height, -backLine), vec3(0.0, 0.0, 1.0), 20.0);
+
+            // Create Light source
+            light[0].position = vec3(-1.0, 0.7, 1.0);
+            light[0].ambience = .1;
+            light[0].specular = vec3(0.7, 0.7, 0.7);
+            light[0].diffuse = vec3(0.6, 0.6, 0.6);
+        }
+
+        // Check if ray intersects sphere, and return the distance along the ray that it intersected the surface of the
+        // sphere, otherwise, return 0.0
+        float checkIntersectSphere(Sphere sphere, Ray ray) {
+            vec3 sphereCenter = sphere.center;
+            float radius = sphere.radius;
+            vec3 cameraSource = ray.origin;
+            vec3 cameraDirection = ray.direction;
+
+            vec3 distanceFromCenter = (cameraSource - sphereCenter);
+            float B = 2.0 * dot(cameraDirection, distanceFromCenter);
+            float C = dot(distanceFromCenter, distanceFromCenter) - pow(radius, 2.0);
+            float delta = pow(B, 2.0) - 4.0 * C;
+            float t = 0.0;
+            if (delta > 0.0) {
+                float sqRoot = sqrt(delta);
+                float t1 = (-B + sqRoot) / 2.0;
+                float t2 = (-B - sqRoot) / 2.0;
+                t = min(t1, t2);
+            }
+            if (delta == 0.0) {
+                t = -B / 2.0;
+            }
+
+            return t;
+        }
+
+        // Check if ray intersects triangle, and return the distance along the ray that it intersected the surface of the
+        // triange, otherwise, return 0.0
+        float checkIntersectTriangle(Triangle tri, Ray ray) {
+            vec3 edge1 = tri.p2 - tri.p1;
+            vec3 edge2 = tri.p3 - tri.p1;
+            vec3 h = cross(ray.direction, edge2);
+            float a = dot(edge1, h);
+            float t;
+            float u;
+            float v;
+
+            if (a > -0.00001 && a < 0.00001) {
+                return 0.0;    // the ray is parallel to the triangle
+            }
+
+            float f = 1.0 / a;
+            vec3 s = ray.origin - tri.p1;
+            u = f * dot(s, h);
+
+            // Verify intersection is within triangle
+            if (u < 0.0 || u > 1.0) {
+                return 0.0;
+            }
+
+            vec3 q = cross(s, edge1);
+            v = f * dot(ray.direction, q);
+
+            // Verify intersection is within triangle
+            if (v < 0.0 || u + v > 1.0) {
+                return 0.0;
+            }
+
+            // compute the distance (t) the intersection is along the line
+            t = f * dot(edge2, q);
+            return t;
+        }
+
+        // This detects if a pixel is in shadow by check if there are any spheres between the point of contact and the
+        // light source
+        bool inShadow(Ray ray, float lightDistance) {
+            for (int i = 0; i < 4; i++) {
+                float t = checkIntersectSphere(spheres[i], ray);
+                if (t > 0.0 && t < lightDistance) {
+                    return true; // object between the point and the light
+                }
+            }
+            return false;
+        }
+
+        // Iteratively calculates the next reflected ray by continuously bouncing it off the next object in its path
+        // until it hits the bounce limit (MAX_ITER) or no longer intersects with another object
+        RayTracerOutput iterativeTraceRay(Ray ray, Light light) {
+            RayTracerOutput bouncingRay = RayTracerOutput(ray, vec3(0.0));
+
+            for (int iter = 0; iter < MAX_ITER; iter++) {
+                float minT = 1000000.0;
+                Sphere sphereToShow;
+                Triangle triToShow;
+                bool hit = false;
+                bool isSphere = true;
+
+                // Check each sphere in the scene and compute how far from the pixel it intersections (otherwise it'll ignore it)
+                for (int i = 0; i < 4; i++) {
+                    float t = checkIntersectSphere(spheres[i], bouncingRay.reflectedRay);
+                    if (t > 0.0 && t < minT) {
+                        minT = t;
+                        sphereToShow = spheres[i];
+                        hit = true;
+                    }
+                }
+
+                // If a sphere has not been hit, check the triangles next, this is a quick optimization and also
+                // ensures that the spheres are rendered on top of the tris
+                if (!hit) {
+                    for (int i = 0; i < 12; i++) {
+                        float t = checkIntersectTriangle(triangles[i], bouncingRay.reflectedRay);
+                        if (t > 0.0 && t < minT) {
+                            minT = t;
+                            triToShow = triangles[i];
+                            hit = true;
+                            isSphere = false;
+                        }
+                    }
+                }
+
+                // If no object is hit (ray is sent off to empty space) then return early and add the background color
+                // to the reflected ray
+                if (!hit) {
+                    if (bouncingRay.color == vec3(0.0, 0.0, 0.0)) {
+                        bouncingRay.color = bgColor;
+                    }
+                    return bouncingRay; // Return last calculated ray (likely background color)
+                }
+
+                vec3 surfaceColor;
+                vec3 normal;
+                vec3 hitPoint = bouncingRay.reflectedRay.origin + minT * bouncingRay.reflectedRay.direction;
+                float shininess;
+
+                // Get the color, normals, and shininess factor different for spheres and tris, some abstraction could
+                // avoid this
+                if (isSphere) {
+                    surfaceColor = sphereToShow.color;
+                    normal = normalize(hitPoint - sphereToShow.center);
+                    shininess = sphereToShow.shininess;
+                } else {
+                    surfaceColor = triToShow.color;
+                    normal = normalize(cross(triToShow.p2 - triToShow.p1, triToShow.p3 - triToShow.p1));
+                    shininess = triToShow.shininess;
+                }
+
+                vec3 cameraDirection = ray.direction;
+                vec3 lightSource = light.position;
+                float ambience = light.ambience;
+
+                vec3 hitToLight =  normalize(lightSource - hitPoint);
+
+                // Compute the reflected ray direction
+                vec3 reflectDir = reflect(bouncingRay.reflectedRay.direction, normal);
+                Ray reflectedRay = Ray(hitPoint + 0.001 * normal, reflectDir); // Offset to avoid self-intersection
+
+                // Compute the specular Phong component
+                vec3 lightReflect = reflect(hitToLight, normal);
+                float specAngle = max(dot(lightReflect, normalize(hitPoint - ray.origin)), 0.0);
+                vec3 specular = light.specular * pow(specAngle, shininess);
+
+                // Compute the diffuse and ambient Phong components
+                vec3 diffuse = max(dot(normal, hitToLight), 0.0) * light.diffuse * surfaceColor;
+                vec3 ambient = surfaceColor * light.ambience;
+
+                vec3 color;
+
+                // If the pixel is in shadow, only use the ambient light calculation
+                if (!inShadow(Ray(hitPoint, hitToLight), length(light.position - hitPoint))) {
+                    color = (ambient * (isSphere ? 1.0 : 10.0)) + diffuse + specular;
+                } else {
+                    color = ambient;
+                }
+
+                // Update the bouncing ray for the next iteration
+                bouncingRay.color = bouncingRay.color + color * pow(0.5, float(iter));
+                bouncingRay.reflectedRay = reflectedRay;
+
+                if (sphereToShow.reflections == 1) {
+                    break;
+                }
+            }
+
+            return bouncingRay;
+        }
+
+        void main() {
+            init();
+
+            // Load the assets depending on the scene
+            if (sceneNumber == 1) {
+                scene1();
+            } else if (sceneNumber == 2) {
+                scene2();
+            } else if (sceneNumber == 3) {
+                scene3();
+            }
+
+            RayTracerOutput iterRay = iterativeTraceRay(rays[0], light[0]);
+            gl_FragColor = vec4(iterRay.color, 1.0);
+        }
+    </script>
+
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/initShaders.js"></script>
+    <script src="lib/MV.js"></script>
+
+    <script src="example.js"></script>
+
+</head>
+
+<body onload="main()">
+
+<canvas id="webgl" width="600" height="600">
+    Please use a browser that supports the "canvas" tag.
+</canvas>
+<br>
+<button onclick="changeScene(1)">Scene 1</button>
+<button onclick="changeScene(2)">Scene 2</button>
+<button onclick="changeScene(3)">Scene 3</button>
+
+</body>
+</html>
