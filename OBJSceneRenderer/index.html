@@ -154,11 +154,25 @@
 
     </head>
 
-    <body onload="main()">
+    <body onload="main()" style="max-width: 1000px;margin:auto;text-align: center">
         <h1 id="mode">OBJ File Renderer</h1>
 
-        <canvas id="webgl" class="box" width="1300" height="700">
+        <canvas id="webgl" class="box" width="1000" height="538">
             Please use a browser that supports the "canvas" tag.
         </canvas>
+        <p>(may take a few seconds to render)</p>
+        <h2>Keybindings</h2>
+        <ul style="max-width: 550px; text-align: left;margin:auto">
+            <li>L: Toggle the lighting from the lamp</li>
+            <li>C: Toggle the motion of the camera around the scene</li>
+            <li>M: Toggle the motion of the car</li>
+            <li>S: Toggle the projected shadows from the car</li>
+            <li>E: Toggle the skybox around the scene</li>
+            <li>D: Toggle whether the camera moves freely or is locked to the bunny in the scene</li>
+            <li>R: Toggle the car's reflections</li>
+            <li>F: Toggle the transparency of the bunny</li>
+        </ul>
+
+        <h3><a href="../index.html">Back Home</a></h3>
     </body>
 </html>

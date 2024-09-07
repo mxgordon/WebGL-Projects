@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Subdividing Cube Animation</title>
 <script id="vertex-shader" type="x-shader/x-vertex">
     precision mediump float;
     precision highp int;
@@ -130,11 +132,27 @@ void main() {
 
     <script type="text/javascript" src="lib/MV.js"></script>
     <script type="text/javascript" src="main.js"></script>
+</head>
 
-    <body onload="main()">
+    <body onload="main()" style="text-align: center">
+        <h1>Subdividing Cube Animation</h1>
 
         <canvas id="gl-canvas" width="512" height="512" >
-            Epic fail!
+            Canvas failed to load
         </canvas>
+
+        <h2>Keybindings</h2>
+
+        <ul style="max-width: 400px; text-align: left;margin:auto">
+            <li>M: Toggles the wireframe vs shaded view of the shape</li>
+            <li>A: Toggles the animation (the shape moving around the track)</li>
+            <li>L: Switches between Gouraud and Phong shading</li>
+            <li>E: Will subdivide the shape further (maximum 5 subdivisions)</li>
+            <li>Q: Will unsubdivide the shape</li>
+            <li>I: Will subdivide the track (maximum 8 subdivisions)</li>
+            <li>J: Will unsubdivide the track</li>
+        </ul>
+
+        <h3><a href="../index.html">Back Home</a></h3>
     </body>
 </html>

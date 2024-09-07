@@ -382,15 +382,22 @@
 
 </head>
 
-<body onload="main()">
+<body onload="main()" style="text-align: center;">
+    <h1>Ray Tracing Renderer</h1>
+    <canvas id="webgl" width="600" height="600">
+        Please use a browser that supports the "canvas" tag.
+    </canvas>
+    <br>
+    <button onclick="changeScene(1)">Scene 1</button>
+    <button onclick="changeScene(2)">Scene 2</button>
+    <button onclick="changeScene(3)">Scene 3</button>
 
-<canvas id="webgl" width="600" height="600">
-    Please use a browser that supports the "canvas" tag.
-</canvas>
-<br>
-<button onclick="changeScene(1)">Scene 1</button>
-<button onclick="changeScene(2)">Scene 2</button>
-<button onclick="changeScene(3)">Scene 3</button>
+    <ul style="max-width: 500px; text-align: left;margin:auto">
+        <li>Scene 1 demonstrates reflections and shadows on a curved surface, and reflected specular highlights.</li>
+        <li>Scene 2 demonstrates recursive reflections (up to the recursion limit).</li>
+        <li>Scene 3 demonstrates complex reflections and a fully lit scene.</li>
+    </ul>
 
+    <h3><a href="../index.html">Back Home</a></h3>
 </body>
 </html>
