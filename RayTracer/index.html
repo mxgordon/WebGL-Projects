@@ -1,7 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="utf-8"/>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../main.css">
+    <link rel="icon" type="image/x-icon" href="../favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap" rel="stylesheet">
+
     <title>Ray Tracing: Four Spheres</title>
 
 
@@ -382,7 +389,7 @@
 
 </head>
 
-<body onload="main()" style="text-align: center;">
+<body class="center" onload="main()">
     <h1>Ray Tracing Renderer</h1>
     <canvas id="webgl" width="600" height="600">
         Please use a browser that supports the "canvas" tag.
@@ -392,12 +399,13 @@
     <button onclick="changeScene(2)">Scene 2</button>
     <button onclick="changeScene(3)">Scene 3</button>
 
-    <ul style="max-width: 500px; text-align: left;margin:auto">
+    <ul>
         <li>Scene 1 demonstrates reflections and shadows on a curved surface, and reflected specular highlights.</li>
         <li>Scene 2 demonstrates recursive reflections (up to the recursion limit).</li>
         <li>Scene 3 demonstrates complex reflections and a fully lit scene.</li>
     </ul>
 
-    <h3><a href="../index.html">Back Home</a></h3>
+    <h3><a href="../">Back Home</a></h3>
 </body>
+
 </html>

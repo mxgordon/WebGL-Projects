@@ -1,7 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
+    <link rel="stylesheet" href="../main.css">
+    <link rel="icon" type="image/x-icon" href="../favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap" rel="stylesheet">
+
     <title>My Vector Graphics Editor</title>
 
     <script id="vshader" type="x-shader/x-vertex">
@@ -39,31 +46,37 @@
 
 <body onload="main()">
 
-<div style="text-align: center">
-    <h1 id='htitle'>My Vector Graphics Editor</h1>
+    <div class="center">
+        <h1 id='htitle'>My Vector Graphics Editor</h1>
 
-    <canvas id="webgl" width="400" height="400" style="border: 1px solid black;">
-        Please use a browser that supports the "canvas" tag.
-    </canvas>
+        <canvas class="border" id="webgl" width="400" height="400" >
+            Please use a browser that supports the "canvas" tag.
+        </canvas>
 
-    <form id="fileupload" enctype="multipart/form-data">
-        <input type="file" id="files" name="files[]" accept=".svg" />
-    </form>
-    <br>
-    <button id="download">
-        Download SVG
-    </button>
+        <form id="fileupload" enctype="multipart/form-data">
+            <label for="files" class="custom-file-upload">
+                Custom Upload
+            </label>
+            <input type="file" id="files" name="files[]" accept=".svg" />
+        </form>
+        <br>
+        <button id="download">
+            Download SVG
+        </button>
 
-    <h2>Instructions</h2>
+        <h2>Instructions</h2>
 
-    <p>First, open the <code>index.html</code> in your browser. Then you can optionally open any of the SVGs in the <code>/SVGEditor/files/</code> folder of the repository to view.</p>
+        <p>First, open the <code></code> in your browser. Then you can optionally open any of the SVGs in the
+            <code>/SVGEditor/files/</code> folder of the repository to view.</p>
 
-    <p>To draw, right-click in any two points to draw a line between them. Additionally, you can pan with the left click and rotate with the scroll wheel.</p>
+        <p>To draw, right-click in any two points to draw a line between them. Additionally, you can pan with the left
+            click and rotate with the scroll wheel.</p>
 
-    <p>Finally, the final SVG can be exported and downloaded with the Download SVG button.</p>
+        <p>Finally, the final SVG can be exported and downloaded with the Download SVG button.</p>
 
-    <h3><a href="../index.html">Back Home</a></h3>
+        <h3><a href="../">Back Home</a></h3>
 
-</div>
+    </div>
 </body>
+
 </html>
